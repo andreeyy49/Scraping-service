@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: entity-vault-service
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/web_scraping_entity_vault_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+app:
+  kafka:
+    saveProductEntityTopic: save-product-entity-topic
+    saveBlogEntityTopic: save-blog-entity-topic
+    crawlerGroupId: crawler-groupId
+
+external-api:
+  authServiceUrl: "gateway:8080/api/v1/auth"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery:8761/eureka/
+

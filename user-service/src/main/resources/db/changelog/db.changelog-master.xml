@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <changeSet id="1" author="Andrei">
+        <sqlFile path="db/changelog/V1__create_user_table.sql"/>
+    </changeSet>
+    <changeSet id="2" author="Andrei">
+        <sqlFile path="db/changelog/V2__create_role_table.sql"/>
+    </changeSet>
+    <changeSet id="3" author="Andrei">
+        <sqlFile path="db/changelog/V3__drop_role_table.sql"/>
+    </changeSet>
+    <changeSet id="4" author="Andrei">
+        <sqlFile path="db/changelog/V4__delete_password_column.sql"/>
+    </changeSet>
+    <changeSet id="5" author="Andrei">
+        <sqlFile path="db/changelog/V5__add_columns.sql"/>
+    </changeSet>
+</databaseChangeLog>

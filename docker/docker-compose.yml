@@ -1,0 +1,184 @@
+version: "3"
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:16.2-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - vote-app-network
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    restart: always
+    ports:
+      - "27017:27017"
+    networks:
+      - vote-app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://localhost:27017 --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.0.12
+    container_name: redis
+    command: [ "redis-server", "--requirepass", "password" ]
+    ports:
+      - "6379:6379"
+    networks:
+      - vote-app-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    restart: always
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - vote-app-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka
+    restart: always
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+    ports:
+      - "9092:9092"
+    networks:
+      - vote-app-network
+
+  discovery-app:
+    image: discovery
+    container_name: discovery
+    ports:
+      - "8761:8761"
+    networks:
+      - vote-app-network
+
+  gateway:
+    image: gateway
+    container_name: gateway
+    depends_on:
+      - discovery-app
+    networks:
+      - vote-app-network
+    ports:
+      - "8080:8080"
+
+  auth-service:
+    image: auth-service
+    container_name: auth-service
+    depends_on:
+      - discovery-app
+      - postgres
+      - redis  # Подключение к Redis-кластеру через один из узлов
+      - kafka
+    environment:
+      - SPRING_REDIS_HOST=redis  # Можно указать любой узел из кластера
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=password
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/web_scraping_auth_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    networks:
+      - vote-app-network
+
+  user-service:
+    image: user-service
+    container_name: user-service
+    depends_on:
+      - discovery-app
+      - postgres
+      - kafka
+    environment:
+      - SPRING_REDIS_PASSWORD=password
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/web_scraping_user_db
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    networks:
+      - vote-app-network
+
+  url-analyzer-service:
+    image: url-analyzer-service
+    container_name: url-analyzer-service
+    depends_on:
+      - discovery-app
+      - kafka
+    networks:
+      - vote-app-network
+
+  crawler-service:
+    image: crawler-service
+    container_name: crawler-service
+    env_file:
+      - .env
+    depends_on:
+      - discovery-app
+      - kafka
+      - postgres
+    networks:
+      - vote-app-network
+
+  parser-service:
+    image: parser-service
+    container_name: parser-service
+    env_file:
+      - .env
+    depends_on:
+      - discovery-app
+      - kafka
+      - postgres
+    networks:
+      - vote-app-network
+
+  playwright-service:
+    image: playwright-service
+    container_name: playwright-service
+    depends_on:
+      - discovery-app
+    networks:
+      - vote-app-network
+
+  entity-vault-service:
+    image: entity-vault-service
+    container_name: entity-vault-service
+    depends_on:
+      - discovery-app
+      - kafka
+      - postgres
+    networks:
+      - vote-app-network
+
+networks:
+  vote-app-network:
+    driver: bridge
+
+volumes:
+  mongo_data:
+  postgres-data:
+    driver: local
+  redis-data-1:
+    driver: local
+  redis-data-2:
+    driver: local
+  redis-data-3:
+    driver: local

@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: discovery
+
+eureka:
+  dashboard:
+    path: /dashboard/
+    enabled: true
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+  instance:
+    hostname: localhost
+    prefer-ip-address: true
+
+server:
+  port: 8761

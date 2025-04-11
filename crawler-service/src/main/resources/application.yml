@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: crawler-service
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        order_updates: true
+        order_inserts: true
+        jdbc:
+          batch_size: 5000
+  datasource:
+    url: jdbc:postgresql://postgres:5432/web_scraping_crawler_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+  data:
+    redis:
+      cluster:
+        nodes:
+          - redis-node-1:6379
+          - redis-node-2:6379
+          - redis-node-3:6379
+      password: password
+      database: 1
+
+app:
+  kafka:
+    publishPageTopic: publish-page-topic
+    crawlerGroupId: crawler-groupId
+
+external-api:
+  authServiceUrl: "gateway:8080/api/v1/auth"
+  playwrightServiceUrl: "gateway:8080/api/v1/playwright"
+  urlAnalyzerService: "gateway:8080/api/v1/url-analyzer"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery:8761/eureka/
+
+aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  bucket-name: scraping-crawler
+  baseUrl: "https://storage.yandexcloud.net/"
+
+logging:
+  level:
+    org.springframework.data.redis: WARN

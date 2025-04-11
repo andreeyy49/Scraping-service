@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: playwright-service
+  threads:
+    virtual:
+      enabled: true
+
+external-api:
+  authServiceUrl: "gateway:8080/api/v1/auth"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery:8761/eureka/
