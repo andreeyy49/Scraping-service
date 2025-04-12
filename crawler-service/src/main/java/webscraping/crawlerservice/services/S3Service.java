@@ -2,6 +2,7 @@ package webscraping.crawlerservice.services;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +48,7 @@ public class S3Service {
             List<Page> chunk = pages.subList(i, endIndex);
             int chunkNumber = i / chunkSize;
 
-            futures.add(executorService.submit(() -> uploadChunk(chunk, siteDataType, chunkNumber)));
+            futures.add(executorService.submit(() -> uploadChunkStreaming(chunk, siteDataType, chunkNumber)));
         }
 
         for (Future<?> future : futures) {
@@ -60,7 +61,7 @@ public class S3Service {
 
     }
 
-    private void uploadChunk(List<Page> chunk, SiteDataType siteDataType, int chunkNumber) {
+    private void uploadChunkStreaming(List<Page> chunk, SiteDataType siteDataType, int chunkNumber) {
         String key = String.format("sites/%s/%s/part-%d.json",
                 chunk.get(0).getSite().getId(),
                 LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
@@ -79,13 +80,19 @@ public class S3Service {
             metadata.setContentType("application/json");
             metadata.setContentLength(bytes.length);
 
-            try (ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes)) {
-                s3Client.putObject(bucket, key, inputStream, metadata);
-                log.info("Uploaded {} pages to {}", chunk.size(), key);
-                eventService.sendPagesToTopic(key);
-            }
+            // Устанавливаем лимит для чтения
+            PutObjectRequest request = new PutObjectRequest(bucket, key, new ByteArrayInputStream(bytes), metadata);
+
+            // Устанавливаем read limit для ретраев
+            request.getRequestClientOptions().setReadLimit(1024 * 1024 * 100); // 100 MB
+
+            s3Client.putObject(request); // Загружаем в S3
+
+            log.info("Uploaded {} pages to {}", chunk.size(), key);
+            eventService.sendPagesToTopic(key);
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload chunk " + chunkNumber, e);
         }
     }
+
 }

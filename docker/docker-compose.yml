@@ -67,6 +67,10 @@ services:
   discovery-app:
     image: discovery
     container_name: discovery
+    deploy:
+      resources:
+        limits:
+          memory: 200m
     ports:
       - "8761:8761"
     networks:
@@ -75,6 +79,10 @@ services:
   gateway:
     image: gateway
     container_name: gateway
+    deploy:
+      resources:
+        limits:
+          memory: 300m
     depends_on:
       - discovery-app
     networks:
@@ -85,6 +93,10 @@ services:
   auth-service:
     image: auth-service
     container_name: auth-service
+    deploy:
+      resources:
+        limits:
+          memory: 300m
     depends_on:
       - discovery-app
       - postgres
@@ -104,6 +116,10 @@ services:
   user-service:
     image: user-service
     container_name: user-service
+    deploy:
+      resources:
+        limits:
+          memory: 300m
     depends_on:
       - discovery-app
       - postgres
@@ -131,6 +147,10 @@ services:
     container_name: crawler-service
     env_file:
       - .env
+    deploy:
+      resources:
+        limits:
+          memory: 3g
     depends_on:
       - discovery-app
       - kafka
