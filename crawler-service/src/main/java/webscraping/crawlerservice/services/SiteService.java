@@ -35,7 +35,7 @@ public class SiteService {
     public Site update(Site site) {
         Site oldSite = findById(site.getId());
         BeanUtils.copyNotNullProperties(site, oldSite);
-        return repository.save(site);
+        return repository.save(oldSite);
     }
 
     public void delete(Site site) {

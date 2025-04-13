@@ -6,5 +6,5 @@ WORKDIR /app
 COPY target/crawler-service-0.0.1-SNAPSHOT.jar crawler-service.jar
 COPY src/main/resources/application.yml ./application.yml
 
-# Команда запуска
-CMD ["java", "-Dspring.config.location=file:/app/application.yml", "-jar", "crawler-service.jar"]
+# Команда запуска с ограничением памяти
+CMD ["java", "-Xms1g", "-Xmx5g", "-Dspring.config.location=file:/app/application.yml", "-jar", "crawler-service.jar"]

@@ -64,23 +64,26 @@ public class IndexingService {
 
             isStartIndexing = true;
 
-            Site newSite = new Site();
-            newSite.setUrl(url);
-            String[] splitUrl = url.split("/");
-            newSite.setName(splitUrl[2]);
-            newSite.setStatus(Status.INDEXING);
-            newSite.setStatusTime(Instant.now());
-            Site oldSite = siteService.findByUrl(newSite.getUrl());
+            String normalUrl = normalizeUrl(url);
+            String[] splitUrl = normalUrl.split("/");
 
-            if (oldSite != null) {
-                siteService.deleteById(oldSite.getId());
+            Site site = siteService.findByUrl(normalUrl);
+            if(site != null) {
+                site.setStatus(Status.INDEXING);
+                site.setStatusTime(Instant.now());
+                siteService.update(site);
+            } else {
+                site = new Site();
+                site.setUrl(normalUrl);
+                site.setStatus(Status.INDEXING);
+                site.setName(splitUrl[2]);
+                site.setStatusTime(Instant.now());
+                siteService.save(site);
             }
 
-            newSite = siteService.save(newSite);
-
             PageUrl pageUrl = new PageUrl();
-            pageUrl.setSite(newSite);
-            pageUrl.setAbsolutePath(newSite.getUrl());
+            pageUrl.setSite(site);
+            pageUrl.setAbsolutePath(site.getUrl());
 
             List<Future<List<PageUrl>>> pagesUrlSummerFuture = new ArrayList<>();
 
@@ -88,7 +91,7 @@ public class IndexingService {
             workerStarter.setPlaywrightClient(playwrightClient);
             workerStarter.setToken(token);
 
-            SiteDataType siteDataType = analyzerClient.getSiteType(newSite.getUrl(), token);
+            SiteDataType siteDataType = analyzerClient.getSiteType(site.getUrl(), token);
 
             workerStarter.setAddress(pageUrl);
             workerStarter.setParentSite(pageUrl.getSite());
@@ -115,7 +118,7 @@ public class IndexingService {
             }
 
 
-            Site site = siteService.findByUrl(url);
+
             site.setStatus(Status.INDEXED);
             site.setStatusTime(Instant.now());
             Site updatedSite = siteService.update(site);
@@ -135,6 +138,13 @@ public class IndexingService {
         });
 
         thread.start();
+    }
+
+    private String normalizeUrl(String url) {
+        if(!url.endsWith("/")) {
+            return url + "/";
+        }
+        return url;
     }
 
     public void stopIndexing() {

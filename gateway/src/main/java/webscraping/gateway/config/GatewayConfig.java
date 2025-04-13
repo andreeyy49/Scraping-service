@@ -16,6 +16,7 @@ public class GatewayConfig {
                 .route("url-analyzer-service", r -> r.path("/api/v1/url-analyzer/**").uri("lb://url-analyzer-service"))
                 .route("crawler-service", r -> r.path("/api/v1/crawler/**").uri("lb://crawler-service"))
                 .route("playwright-service", r -> r.path("/api/v1/playwright/**").uri("lb://playwright-service"))
+                .route("entity-vault-service", r -> r.path("/api/v1/entity-vault/**").uri("lb://entity-vault-service"))
                 .build();
     }
 }

@@ -40,8 +40,8 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
             .build();
 
     private static final Map<String, Semaphore> hostSemaphores = new ConcurrentHashMap<>();
-    private static final Semaphore globalSemaphore = new Semaphore(150); // Увеличено до 30
-    private static final int MAX_HOST_CONCURRENT_REQUESTS = 50; // Лимит на хост
+    private static final Semaphore globalSemaphore = new Semaphore(30); // Увеличено до 30
+    private static final int MAX_HOST_CONCURRENT_REQUESTS = 15; // Лимит на хост
 
     // Глобальный набор для отслеживания обработанных URL
     private static Set<String> addedUrls;

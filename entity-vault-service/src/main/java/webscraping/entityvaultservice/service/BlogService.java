@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.repository.BlogRepository;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -15,5 +17,9 @@ public class BlogService {
 
     public Blog save(Blog blog) {
         return blogRepository.save(blog);
+    }
+
+    public List<String> findLatestImageUrlsBySiteId(Long siteId) {
+        return blogRepository.findLatestImageUrlsBySiteId(siteId);
     }
 }
