@@ -137,16 +137,26 @@ public class EComersService {
     }
 
     private String extractPriceFromText(String text) {
+        List<String> skipWords = List.of("рассрочка", "от", "доступно", "платёж", "в месяц", "кредит");
+
         // Удаляем лишние символы, кроме цифр, пробелов, точек и запятых
         String cleaned = text.replaceAll("[^\\d.,\\s]", " ").trim();
 
         // Соединяем пробелы между цифрами (например, 12 345 → 12345)
         cleaned = cleaned.replaceAll("(\\d)\\s+(\\d)", "$1$2");
 
-        // Ищем последовательности с цифрами, точками или запятыми
-        Matcher matcher = Pattern.compile("(\\d+[.,\\s]?\\d*[.,\\s]?\\d*)").matcher(cleaned);
+        // Проверка на нежелательные слова
+        String lower = text.toLowerCase();
+        for (String skipWord : skipWords) {
+            if (lower.contains(skipWord)) {
+                return null;
+            }
+        }
 
+        // Ищем числа
+        Matcher matcher = Pattern.compile("(\\d+[.,\\s]?\\d*[.,\\s]?\\d*)").matcher(cleaned);
         List<String> prices = new ArrayList<>();
+
         while (matcher.find()) {
             String rawPrice = matcher.group(1).replaceAll("\\s", "");
             String normalizedPrice = normalizePrice(rawPrice);
