@@ -3,6 +3,7 @@ package webscraping.entityvaultservice.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import webscraping.entityvaultservice.dto.ProductCostProgressDto;
+import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.model.Product;
 import webscraping.entityvaultservice.service.BlogService;
 import webscraping.entityvaultservice.service.ProductService;
@@ -20,6 +21,11 @@ public class EntityVaultController {
     @GetMapping("/blog/images/{site_id}")
     public List<String> findLatestImageUrlsBySiteIdInBlog(@PathVariable("site_id") Long siteId) {
         return blogService.findLatestImageUrlsBySiteId(siteId);
+    }
+
+    @PostMapping("/blog/findByKeyWords")
+    public List<Blog> findByKeyWords(@RequestBody List<String> keywords) {
+        return blogService.findLatestBlogsByKeywords(keywords);
     }
 
     @GetMapping("/product/images/{site_id}")

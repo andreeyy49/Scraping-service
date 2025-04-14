@@ -12,23 +12,18 @@ import java.util.*;
 public class BlogParser {
 
     public static List<String> findKeyWord(String html) {
-        List<String> keyWords = getTags(html);
+        List<String> keyWords = new ArrayList<>(getTags(html));
         String content = getContent(html);
 
-        if (keyWords.isEmpty()) {
-            if (content == null || content.isEmpty()) {
-                log.warn("Content is empty");
-            }
-            HashMap<String, Integer> lemmas = LemmaFinder.getLemmas(content);
-            keyWords.addAll(lemmas.entrySet()
-                    .stream()
-                    .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
-                    .limit(5)
-                    .map(Map.Entry::getKey)
-                    .toList());
-        }
+        HashMap<String, Integer> lemmas = LemmaFinder.getLemmas(content);
+        keyWords.addAll(lemmas.entrySet()
+                .stream()
+                .sorted((a, b) -> b.getValue().compareTo(a.getValue()))
+                .limit(5)
+                .map(Map.Entry::getKey)
+                .toList());
 
-        return keyWords;
+        return new HashSet<>(keyWords).stream().toList();
     }
 
     public static String getContent(String html) {
@@ -57,7 +52,7 @@ public class BlogParser {
         Document doc = Jsoup.parse(html);
 
         // Проверяем разные теги, учитываем структуры разных сайтов
-       return doc.selectFirst(
+        return doc.selectFirst(
                 "article, section.article-content, div.article-content, div.post-content, " +
                         "main, div.main-content, div.content, div.entry-content, " +
                         "div.blog-post, div.news-text"
@@ -105,7 +100,7 @@ public class BlogParser {
         }
         List<String> result = ImageUtil.extractImageUrlsFromHtmlText(html, baseUrl);
 
-        if(result.isEmpty()) return List.of("Empty");
+        if (result.isEmpty()) return List.of("Empty");
 
         return result;
     }
