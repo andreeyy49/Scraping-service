@@ -188,6 +188,16 @@ services:
     networks:
       - vote-app-network
 
+  front:
+    image: front
+    container_name: front
+    ports:
+      - "3000:80"
+    networks:
+      - vote-app-network
+    depends_on:
+      - gateway
+
 networks:
   vote-app-network:
     driver: bridge

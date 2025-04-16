@@ -27,7 +27,7 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public SimpleResponse registerUser(@RequestBody RegistrationRequest request) {;
+    public SimpleResponse registerUser(@RequestBody RegistrationRequest request) {
         registrationService.registerUser(request);
         return new SimpleResponse(LocalDateTime.now(), "Пользователь успешно создан");
     }
