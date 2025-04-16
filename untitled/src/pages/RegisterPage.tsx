@@ -1,6 +1,14 @@
 import React, { useState, FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser, loginUser } from "../api/authApi";
+import {
+    Box,
+    Button,
+    Card,
+    CardContent,
+    TextField,
+    Typography,
+} from "@mui/material";
 
 const Register: React.FC = () => {
     const [email, setEmail] = useState("");
@@ -36,49 +44,73 @@ const Register: React.FC = () => {
         navigate("/dashboard");
     };
 
-
     return (
-        <div style={{ marginTop: "100px", textAlign: "center" }}>
-            <h2>Регистрация</h2>
-            <form onSubmit={handleSubmit}>
-                <input
-                    type="text"
-                    placeholder="Имя пользователя"
-                    value={userName}
-                    onChange={(e) => setUserName(e.target.value)}
-                    required
-                    style={{ display: "block", margin: "10px auto", padding: "8px" }}
-                />
-                <input
-                    type="email"
-                    placeholder="Почта"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    style={{ display: "block", margin: "10px auto", padding: "8px" }}
-                />
-                <input
-                    type="password"
-                    placeholder="Пароль"
-                    value={password1}
-                    onChange={(e) => setPassword1(e.target.value)}
-                    required
-                    style={{ display: "block", margin: "10px auto", padding: "8px" }}
-                />
-                <input
-                    type="password"
-                    placeholder="Повторите пароль"
-                    value={password2}
-                    onChange={(e) => setPassword2(e.target.value)}
-                    required
-                    style={{ display: "block", margin: "10px auto", padding: "8px" }}
-                />
-                <button type="submit" style={{ padding: "10px 20px" }}>
-                    Зарегистрироваться
-                </button>
-            </form>
-            {message && <p>{message}</p>}
-        </div>
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="100vh"
+            bgcolor="#f5f5f5"
+        >
+            <Card sx={{ width: 400, padding: 3, boxShadow: 3 }}>
+                <CardContent>
+                    <Typography variant="h5" component="h2" textAlign="center" gutterBottom>
+                        Регистрация
+                    </Typography>
+                    <Box component="form" onSubmit={handleSubmit}>
+                        <TextField
+                            label="Имя пользователя"
+                            value={userName}
+                            onChange={(e) => setUserName(e.target.value)}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                        <TextField
+                            label="Почта"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                        <TextField
+                            label="Пароль"
+                            type="password"
+                            value={password1}
+                            onChange={(e) => setPassword1(e.target.value)}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                        <TextField
+                            label="Повторите пароль"
+                            type="password"
+                            value={password2}
+                            onChange={(e) => setPassword2(e.target.value)}
+                            fullWidth
+                            margin="normal"
+                            required
+                        />
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            color="primary"
+                            fullWidth
+                            sx={{ mt: 2 }}
+                        >
+                            Зарегистрироваться
+                        </Button>
+                    </Box>
+                    {message && (
+                        <Typography color="error" textAlign="center" mt={2}>
+                            {message}
+                        </Typography>
+                    )}
+                </CardContent>
+            </Card>
+        </Box>
     );
 };
 

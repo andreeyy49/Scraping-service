@@ -6,18 +6,23 @@ const API_URL = "http://localhost:8080/api/v1/auth"; // URL твоего аут�
 export const loginUser = async (email: string, password: string) => {
     try {
         const response = await axios.post(`${API_URL}/login`, { email, password });
-        const { token, refreshToken } = response.data;
+        const { accessToken, refreshToken } = response.data;
 
-        // Сохраняем оба токена
-        localStorage.setItem("token", token);
+        if (!accessToken || !refreshToken) {
+            console.error("Ответ от сервера не содержит токены:", response.data);
+            return null;
+        }
+
+        localStorage.setItem("token", accessToken);
         localStorage.setItem("refreshToken", refreshToken);
 
-        return { token, refreshToken };
+        return { accessToken, refreshToken };
     } catch (error) {
         console.error("Ошибка при авторизации", error);
         return null;
     }
 };
+
 
 
 // Функция для регистрации

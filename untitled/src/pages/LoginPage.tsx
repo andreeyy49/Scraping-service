@@ -1,4 +1,12 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import {
+    Box,
+    Button,
+    Card,
+    CardContent,
+    TextField,
+    Typography,
+} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/authApi";
 
@@ -21,29 +29,48 @@ export default function LoginPage() {
     };
 
     return (
-        <div style={{ marginTop: "100px", textAlign: "center" }}>
-            <h2>Вход</h2>
-            <input
-                type="text"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                style={{ display: "block", margin: "10px auto", padding: "8px" }}
-            />
-            <input
-                type="password"
-                placeholder="Пароль"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                style={{ display: "block", margin: "10px auto", padding: "8px" }}
-            />
-            <button onClick={handleLogin} style={{ padding: "10px 20px", margin: "10px" }}>
-                Войти
-            </button>
-            <br />
-            <button onClick={handleRedirectToRegister} style={{ padding: "8px 16px", marginTop: "10px" }}>
-                Зарегистрироваться
-            </button>
-        </div>
+        <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            minHeight="100vh"
+            bgcolor="#f5f5f5"
+        >
+            <Card sx={{ width: 400, padding: 3, boxShadow: 3 }}>
+                <CardContent>
+                    <Typography variant="h5" textAlign="center" gutterBottom>
+                        Вход
+                    </Typography>
+                    <TextField
+                        label="Email"
+                        variant="outlined"
+                        fullWidth
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        label="Пароль"
+                        type="password"
+                        variant="outlined"
+                        fullWidth
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        sx={{ mb: 3 }}
+                    />
+                    <Button
+                        variant="contained"
+                        onClick={handleLogin}
+                        fullWidth
+                        sx={{ mb: 1 }}
+                    >
+                        Войти
+                    </Button>
+                    <Button onClick={handleRedirectToRegister} fullWidth>
+                        Зарегистрироваться
+                    </Button>
+                </CardContent>
+            </Card>
+        </Box>
     );
 }
