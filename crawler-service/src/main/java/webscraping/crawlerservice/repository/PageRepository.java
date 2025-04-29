@@ -18,6 +18,8 @@ public interface PageRepository extends JpaRepository<Page, UUID> {
 
     List<Page> findBySite(Site site);
 
+    void deleteBySite(Site site);
+
     @Transactional
     @Modifying
     @Query("DELETE FROM pages WHERE site IS NULL")

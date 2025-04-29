@@ -3,12 +3,16 @@ package webscraping.crawlerservice.services;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import webscraping.crawlerservice.dto.SiteDto;
+import webscraping.crawlerservice.enums.SiteDataType;
 import webscraping.crawlerservice.model.Site;
 import webscraping.crawlerservice.repository.SiteRepository;
 import webscraping.crawlerservice.util.BeanUtils;
 
 import java.text.MessageFormat;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -48,5 +52,36 @@ public class SiteService {
 
     public void deleteById(Long id) {
         repository.deleteById(id);
+    }
+
+    public List<SiteDto> getAllSitesStats() {
+        List<SiteDto> sites = new ArrayList<>();
+        sites.addAll(getEComers());
+        sites.addAll(getBlogs());
+        return sites;
+    }
+
+    public List<SiteDto> getEComers() {
+        return getSitesByType(SiteDataType.E_COMMERCE);
+    }
+
+    public List<SiteDto> getBlogs() {
+        return getSitesByType(SiteDataType.BLOG);
+    }
+
+    public List<SiteDto> getSitesByType(SiteDataType type) {
+        List<Site> sites = repository.findAllByType(type);
+
+        return sites.stream().map(site -> {
+            SiteDto siteDto = new SiteDto();
+            siteDto.setId(String.valueOf(site.getId()));
+            siteDto.setUrl(site.getUrl());
+            siteDto.setName(site.getName());
+            siteDto.setStatus(site.getStatus());
+            siteDto.setType(type.toString());
+            siteDto.setPageCount(site.getPages().size());
+            siteDto.setLastScraped(site.getStatusTime().toString());
+            return siteDto;
+        }).collect(Collectors.toList());
     }
 }

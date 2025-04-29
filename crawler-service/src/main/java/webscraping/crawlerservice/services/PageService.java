@@ -1,6 +1,7 @@
 package webscraping.crawlerservice.services;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import webscraping.crawlerservice.model.Page;
@@ -50,6 +51,11 @@ public class PageService {
 
     public void delete(UUID id) {
         repository.deleteById(id);
+    }
+
+    @Transactional
+    public void deleteBySite(Site site) {
+        repository.deleteBySite(site);
     }
 
     public String getContent(String path) {

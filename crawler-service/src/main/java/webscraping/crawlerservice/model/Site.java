@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import webscraping.crawlerservice.enums.SiteDataType;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,7 +37,9 @@ public class Site {
     @Column(columnDefinition = "VARCHAR(255)", nullable = false)
     private String name;
 
-    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "site", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private List<Page> pages = new ArrayList<>();
 
+    @Enumerated(EnumType.STRING)
+    private SiteDataType type;
 }

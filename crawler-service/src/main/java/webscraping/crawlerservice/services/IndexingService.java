@@ -69,6 +69,8 @@ public class IndexingService {
 
             Site site = siteService.findByUrl(normalUrl);
             if(site != null) {
+                pageService.deleteBySite(site);
+                site.setPages(new ArrayList<>());
                 site.setStatus(Status.INDEXING);
                 site.setStatusTime(Instant.now());
                 siteService.update(site);
@@ -78,6 +80,7 @@ public class IndexingService {
                 site.setStatus(Status.INDEXING);
                 site.setName(splitUrl[2]);
                 site.setStatusTime(Instant.now());
+                site.setType(SiteDataType.UN_TYPE);
                 siteService.save(site);
             }
 
@@ -120,6 +123,7 @@ public class IndexingService {
 
 
             site.setStatus(Status.INDEXED);
+            site.setType(siteDataType);
             site.setStatusTime(Instant.now());
             Site updatedSite = siteService.update(site);
 

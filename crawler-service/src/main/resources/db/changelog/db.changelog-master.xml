@@ -14,4 +14,7 @@
         <sqlFile path="db/changelog/V2_0__Delete_content_column.sql"/>
     </changeSet>
 
+    <changeSet id="3" author="Andrei">
+        <sqlFile path="db/changelog/V3_0__Add_site-type.sql"/>
+    </changeSet>
 </databaseChangeLog>

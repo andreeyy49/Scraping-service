@@ -1,18 +1,12 @@
 package webscraping.parserservice.util;
 
 import lombok.extern.slf4j.Slf4j;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class ImageUtil {
@@ -37,7 +31,7 @@ public class ImageUtil {
         if (!"Empty".equals(bgImage)) return bgImage;
 
         // 4. Fallback: первое подходящее изображение в контейнере
-        return findFirstValidImage(productContainer);
+        return findFirstValidImage(productContainer).orElse("Empty");
     }
 
     private static Element findMainImage(Element container) {
@@ -68,13 +62,38 @@ public class ImageUtil {
         return "Empty";
     }
 
-    private static String findFirstValidImage(Element container) {
+    private static Optional<String> findFirstValidImage(Element container) {
         for (Element img : container.select("img")) {
-            String url = extractFromImgElement(img);
-            if (!"Empty".equals(url)) return url;
+            String className = img.className().toLowerCase();
+            if (className.contains("logo") || className.contains("icon") || className.contains("sprite")) {
+                continue;
+            }
+
+            int width = parseDimension(img.attr("width"));
+            int height = parseDimension(img.attr("height"));
+
+            if ((width > 0 && width < 100) || (height > 0 && height < 100)) {
+                continue;
+            }
+
+            String src = img.attr("src");
+            if (!src.isBlank()) {
+                return Optional.of(src);
+            }
         }
-        return "Empty";
+        return Optional.empty();
     }
+
+
+    // Вспомогательный метод для безопасного парсинга числовых атрибутов
+    private static int parseDimension(String value) {
+        try {
+            return Integer.parseInt(value.trim().replaceAll("[^\\d]", ""));
+        } catch (NumberFormatException e) {
+            return -1;
+        }
+    }
+
 
     // Остальные методы без изменений
     private static String extractFromImgElement(Element img) {

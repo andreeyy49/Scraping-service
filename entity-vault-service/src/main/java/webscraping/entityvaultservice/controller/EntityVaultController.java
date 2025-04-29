@@ -3,8 +3,8 @@ package webscraping.entityvaultservice.controller;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import webscraping.entityvaultservice.dto.ProductCostProgressDto;
+import webscraping.entityvaultservice.dto.ProductDto;
 import webscraping.entityvaultservice.model.Blog;
-import webscraping.entityvaultservice.model.Product;
 import webscraping.entityvaultservice.service.BlogService;
 import webscraping.entityvaultservice.service.ProductService;
 
@@ -28,14 +28,26 @@ public class EntityVaultController {
         return blogService.findLatestBlogsByKeywords(keywords);
     }
 
+    @PostMapping("/blog/findByKeyWordsAndSiteId/{siteId}")
+    public List<Blog> findByKeyWordsAndSiteId(@RequestBody List<String> keywords,
+                                              @PathVariable("siteId") String siteId) {
+        return blogService.findLatestBlogsByKeywordsAndSiteId(keywords, siteId);
+    }
+
     @GetMapping("/product/images/{site_id}")
     public List<String> findLatestImageUrlsBySiteIdInProduct(@PathVariable("site_id") Long siteId) {
         return productService.findLatestImageUrlsBySiteId(siteId);
     }
 
     @GetMapping("/product/findAllByTitle/{title}")
-    public List<Product> findAllProductsByTitle(@PathVariable("title") String title) {
+    public List<ProductDto> findAllProductsByTitle(@PathVariable("title") String title) {
         return productService.findAllProductsByTitle(title);
+    }
+
+    @GetMapping("/product/findAllByTitleAndSiteId/{title}/{siteId}")
+    public List<ProductDto> findAllProductsByTitleAndSiteId(@PathVariable("title") String title,
+                                                            @PathVariable("siteId") String siteId) {
+        return productService.findAllProductsByTitleAndSiteId(title, siteId);
     }
 
     @PostMapping("/product/findCostProgress")
