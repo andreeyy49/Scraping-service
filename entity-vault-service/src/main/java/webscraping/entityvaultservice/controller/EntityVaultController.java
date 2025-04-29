@@ -55,4 +55,14 @@ public class EntityVaultController {
         return productService.findCostProgress(productCostProgressDto.getSiteId(),
                 productCostProgressDto.getTitle());
     }
+
+    @GetMapping("/product/findNew/{siteId}")
+    public List<ProductDto> findNewProducts(@PathVariable("siteId") Long siteId) {
+        return productService.rightJoinProductsBySiteId(siteId);
+    }
+
+    @GetMapping("/product/findOld/{siteId}")
+    public List<ProductDto> findOldProducts(@PathVariable("siteId") Long siteId) {
+        return productService.leftJoinProductsBySiteId(siteId);
+    }
 }

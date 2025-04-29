@@ -7,8 +7,10 @@ import webscraping.entityvaultservice.dto.ProductDto;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.model.Product;
 import webscraping.entityvaultservice.repository.ProductRepository;
+import webscraping.entityvaultservice.util.JoinEnum;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -75,6 +77,50 @@ public class ProductService {
         return products.stream().map(ProductDto::getPrice).toList();
     }
 
+    public List<ProductDto> leftJoinProductsBySiteId(Long siteId) {
+        return joinProductsBySiteId(siteId, JoinEnum.LEFT);
+    }
+
+    public List<ProductDto> rightJoinProductsBySiteId(Long siteId) {
+        return joinProductsBySiteId(siteId, JoinEnum.RIGHT);
+    }
+
+    public List<ProductDto> joinProductsBySiteId(Long siteId, JoinEnum joinEnum) {
+        List<Date> dates = productRepository.findLastTwoUniqueDatesBySiteId(siteId);
+
+        if (dates.isEmpty() || dates.size() < 2) {
+            return new ArrayList<>();
+        }
+
+        List<Product> lastProducts = productRepository.findAllByParseTime(dates.get(0));
+        List<Product> preLastProducts = productRepository.findAllByParseTime(dates.get(1));
+
+        log.info("First date {}, second {}", dates.get(0), dates.get(1));
+        log.info("New product size {}, old product size {}", lastProducts.size(), preLastProducts.size());
+
+        Function<Product, String> key = k ->
+                k.getTitle().toLowerCase().trim() + "|" + k.getSiteId();
+
+        if (joinEnum == JoinEnum.LEFT) {
+            Set<String> newProducts = lastProducts.stream()
+                    .map(key)
+                    .collect(Collectors.toSet());
+
+            return preLastProducts.stream()
+                    .filter(oldProduct -> !newProducts.contains(key.apply(oldProduct)))
+                    .map(this::productToDto)
+                    .collect(Collectors.toList());
+        } else {
+            Set<String> oldProducts = preLastProducts.stream()
+                    .map(key)
+                    .collect(Collectors.toSet());
+
+            return lastProducts.stream()
+                    .filter(newProduct -> !oldProducts.contains(key.apply(newProduct)))
+                    .map(this::productToDto)
+                    .collect(Collectors.toList());
+        }
+    }
 
     private Date findLastDate(List<Product> products) {
         return products.stream()

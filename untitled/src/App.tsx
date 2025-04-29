@@ -6,6 +6,7 @@ import AddSitePage from "./pages/AddSitePage";
 import SiteDetailsPage from "./pages/SiteDetailsPage";
 import AnalyzeShopsPage from "./pages/AnalyzeShopsPage";
 import AnalyzeBlogsPage from "./pages/AnalyzeBlogsPage";
+import SiteStatsPage from "./pages/SiteStatsPage";
 
 function App() {
     return (
@@ -20,6 +21,7 @@ function App() {
                 <Route path="/analyze-blogs" element={<AnalyzeBlogsPage/>}/>
                 <Route path="/add-site" element={<AddSitePage/>}/>
                 <Route path="/site/:id" element={<SiteDetailsPage/>}/>
+                <Route path="/site-stats/:siteId" element={<SiteStatsPage />} />
             </Routes>
         </BrowserRouter>
     );

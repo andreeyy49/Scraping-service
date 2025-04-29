@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import webscraping.entityvaultservice.model.Product;
 
+import java.util.Date;
 import java.util.List;
 import java.util.UUID;
 
@@ -21,27 +22,14 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             , nativeQuery = true)
     List<Product> findAllProductsByTitle(@Param("title") String title);
 
-//    @Query(
-//            value = """
-//                            SELECT pi.image_url
-//                            FROM product_images pi
-//                            JOIN product p ON pi.product_id = p.id
-//                            WHERE p.site_id = :siteId
-//                                AND p.parse_time = (
-//                                    SELECT MAX(parse_time)
-//                                    FROM product
-//                                    WHERE site_id = :siteId
-//                                )
-//                    """,
-//            nativeQuery = true
-//    )
-//    List<String> findLatestImageUrlsBySiteId(@Param("siteId") Long siteId);
-//
-//    @Query(value = """
-//            SELECT * FROM product
-//            WHERE site_id = :siteId
-//            AND product.title ILIKE :title;
-//            """
-//            , nativeQuery = true)
-//    List<Product> findAllProductsBySiteIdAndTitle(@Param("siteId") Long siteId, @Param("title") String title);
+    @Query(value = """
+            SELECT DISTINCT parse_time 
+            FROM product 
+            WHERE site_id = :siteId
+            ORDER BY parse_time DESC 
+            LIMIT 2
+            """, nativeQuery = true)
+    List<Date> findLastTwoUniqueDatesBySiteId(@Param("siteId") Long siteId);
+
+    List<Product> findAllByParseTime(Date parseTime);
 }
