@@ -17,7 +17,8 @@ import {
     Drawer,
     Stack,
     Divider,
-    MenuItem
+    MenuItem,
+    Pagination
 } from "@mui/material";
 import {
     Menu as MenuIcon,
@@ -46,38 +47,51 @@ interface Site {
     status: "INDEXING" | "INDEXED" | "FAILED";
 }
 
+interface PaginatedResponse<T> {
+    content: T[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+    size: number;
+}
+
 export default function AnalyzeShopsPage() {
-
-
     const [query, setQuery] = useState("");
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(false);
     const [openDrawer, setOpenDrawer] = useState(false);
     const [sites, setSites] = useState<Site[]>([]);
     const [selectedSite, setSelectedSite] = useState("");
+    const [page, setPage] = useState(1);
+    const [size, setSize] = useState(9);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
 
     const navigate = useNavigate();
 
-    const handleSearch = async () => {
+    const handleSearch = async (newPage = 1, newSize = size) => {
         if (!query.trim()) return;
 
         setLoading(true);
         try {
             let url;
             if (selectedSite) {
-                // Если выбран конкретный сайт, используем эндпоинт для поиска по сайту
-                url = `http://localhost:8080/api/v1/entity-vault/product/findAllByTitleAndSiteId/${encodeURIComponent(query)}/${selectedSite}`;
+                url = `http://localhost:8080/api/v1/entity-vault/product/findAllByTitleAndSiteId/${encodeURIComponent(query)}/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
             } else {
-                // Если сайт не выбран, используем старый эндпоинт для поиска по всем сайтам
-                url = `http://localhost:8080/api/v1/entity-vault/product/findAllByTitle/${encodeURIComponent(query)}`;
+                url = `http://localhost:8080/api/v1/entity-vault/product/findAllByTitle/${encodeURIComponent(query)}?page=${newPage - 1}&size=${newSize}`;
             }
 
-            const response = await axios.get(url, {
+            const response = await axios.get<PaginatedResponse<Product>>(url, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
             });
-            setProducts(response.data);
+
+            setProducts(response.data.content);
+            setTotalPages(response.data.totalPages);
+            setTotalElements(response.data.totalElements);
+            setPage(newPage);
+            setSize(newSize);
         } catch (error) {
             console.error("Ошибка при поиске товаров", error);
             alert("Произошла ошибка при поиске товаров");
@@ -86,11 +100,14 @@ export default function AnalyzeShopsPage() {
         }
     };
 
-    const handleSiteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        console.log('Selected site id:', event.target.value); // Логирование
-        setSelectedSite(event.target.value);
+    const handlePageChange = (event: React.ChangeEvent<unknown>, newPage: number) => {
+        handleSearch(newPage);
     };
 
+    const handleSiteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        setSelectedSite(event.target.value);
+        setPage(1); // Сброс пагинации при изменении сайта
+    };
 
     const handleLogout = async () => {
         try {
@@ -116,8 +133,7 @@ export default function AnalyzeShopsPage() {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
                 });
-                // Убедись, что данные приходят в правильном формате
-                setSites(res.data); // В данном случае предполагается, что res.data - это массив объектов
+                setSites(res.data);
             } catch (e) {
                 console.error("Ошибка при загрузке сайтов", e);
             }
@@ -171,8 +187,8 @@ export default function AnalyzeShopsPage() {
                         select
                         fullWidth
                         label="Выберите сайт"
-                        value={selectedSite} // Это значение должно быть обновлено, когда вы выбираете сайт
-                        onChange={handleSiteChange} // Вызов функции обновления
+                        value={selectedSite}
+                        onChange={handleSiteChange}
                         sx={{ flex: 1, minWidth: 180 }}
                     >
                         <MenuItem value="">Все сайты</MenuItem>
@@ -185,7 +201,7 @@ export default function AnalyzeShopsPage() {
 
                     <Button
                         variant="contained"
-                        onClick={handleSearch}
+                        onClick={() => handleSearch()}
                         disabled={loading || !query.trim()}
                         sx={{ minWidth: 120 }}
                     >
@@ -210,44 +226,61 @@ export default function AnalyzeShopsPage() {
                 )}
 
                 {products.length > 0 && (
-                    <Grid container spacing={3}>
-                        {products.map((product) => (
-                            <Grid item xs={12} sm={6} md={4} key={product.id}>
-                                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                    <CardMedia
-                                        component="img"
-                                        height="200"
-                                        image={product.imageUrl || "https://via.placeholder.com/300"}
-                                        alt={product.name}
-                                        sx={{ objectFit: 'contain', p: 1 }}
-                                    />
+                    <>
+                        <Grid container spacing={3}>
+                            {products.map((product) => (
+                                <Grid item xs={12} sm={6} md={4} key={product.id}>
+                                    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                        <CardMedia
+                                            component="img"
+                                            height="200"
+                                            image={product.imageUrl || "https://via.placeholder.com/300"}
+                                            alt={product.name}
+                                            sx={{ objectFit: 'contain', p: 1 }}
+                                        />
 
-                                    <CardContent sx={{ flexGrow: 1 }}>
-                                        <Typography gutterBottom variant="h6" component="div">
-                                            {product.name}
-                                        </Typography>
+                                        <CardContent sx={{ flexGrow: 1 }}>
+                                            <Typography gutterBottom variant="h6" component="div">
+                                                {product.name}
+                                            </Typography>
 
-                                        <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
-                                            {product.price}
-                                        </Typography>
-                                    </CardContent>
+                                            <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                                                {product.price}
+                                            </Typography>
+                                        </CardContent>
 
-                                    <Box sx={{ p: 2 }}>
-                                        <Link
-                                            href={product.productUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            sx={{ textDecoration: 'none' }}
-                                        >
-                                            <Button fullWidth variant="contained">
-                                                Перейти к товару
-                                            </Button>
-                                        </Link>
-                                    </Box>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
+                                        <Box sx={{ p: 2 }}>
+                                            <Link
+                                                href={product.productUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{ textDecoration: 'none' }}
+                                            >
+                                                <Button fullWidth variant="contained">
+                                                    Перейти к товару
+                                                </Button>
+                                            </Link>
+                                        </Box>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                            <Pagination
+                                count={totalPages}
+                                page={page}
+                                onChange={handlePageChange}
+                                color="primary"
+                                showFirstButton
+                                showLastButton
+                            />
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary" textAlign="center" mt={1}>
+                            Всего товаров: {totalElements}
+                        </Typography>
+                    </>
                 )}
 
                 {!loading && products.length === 0 && query && (
