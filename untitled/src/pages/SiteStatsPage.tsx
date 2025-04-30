@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import axios from "axios";
 import {
     Container,
@@ -48,20 +49,27 @@ interface PageData<T> {
     number: number;
 }
 
+interface ProductCostChange {
+    product: Product;
+    costChange: { [date: string]: string }; // ключ — дата, значение — цена
+}
+
 export default function SiteStatsPage() {
     const { siteId } = useParams();
     const navigate = useNavigate();
     const [newProducts, setNewProducts] = useState<PageData<Product> | null>(null);
     const [oldProducts, setOldProducts] = useState<PageData<Product> | null>(null);
+    const [priceChangedProducts, setPriceChangedProducts] = useState<PageData<ProductCostChange> | null>(null);
     const [loading, setLoading] = useState(true);
     const [openDrawer, setOpenDrawer] = useState(false);
     const [expanded, setExpanded] = useState<string | false>(false);
 
+    const [priceChangePage, setPriceChangePage] = useState(1);
     const [newPage, setNewPage] = useState(1);
     const [oldPage, setOldPage] = useState(1);
     const itemsPerPage = 9;
 
-    const handleAccordionChange = (panel: string) => (event: React.SyntheticEvent, isExpanded: boolean) => {
+    const handleAccordionChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
         setExpanded(isExpanded ? panel : false);
     };
 
@@ -71,19 +79,41 @@ export default function SiteStatsPage() {
                 setLoading(true);
                 const token = localStorage.getItem("token");
 
-                const [newRes, oldRes] = await Promise.all([
-                    axios.get(`http://localhost:8080/api/v1/entity-vault/product/findNew/${siteId}`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                        params: { page: newPage - 1, size: itemsPerPage }
-                    }),
-                    axios.get(`http://localhost:8080/api/v1/entity-vault/product/findOld/${siteId}`, {
-                        headers: { Authorization: `Bearer ${token}` },
-                        params: { page: oldPage - 1, size: itemsPerPage }
-                    })
-                ]);
+                // Всегда делаем запросы при первой загрузке или при изменении страницы
+                const shouldFetchNew = !newProducts || newPage !== (newProducts?.number + 1);
+                const shouldFetchOld = !oldProducts || oldPage !== (oldProducts?.number + 1);
+                const shouldFetchPriceChanged = !priceChangedProducts || priceChangePage !== (priceChangedProducts?.number + 1);
 
-                setNewProducts(newRes.data);
-                setOldProducts(oldRes.data);
+                const requests = [];
+
+                if (shouldFetchNew) {
+                    requests.push(
+                        axios.get(`http://localhost:8080/api/v1/entity-vault/product/findNew/${siteId}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { page: newPage - 1, size: itemsPerPage }
+                        }).then(res => setNewProducts(res.data))
+                    );
+                }
+
+                if (shouldFetchOld) {
+                    requests.push(
+                        axios.get(`http://localhost:8080/api/v1/entity-vault/product/findOld/${siteId}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { page: oldPage - 1, size: itemsPerPage }
+                        }).then(res => setOldProducts(res.data))
+                    );
+                }
+
+                if (shouldFetchPriceChanged) {
+                    requests.push(
+                        axios.get(`http://localhost:8080/api/v1/entity-vault/product/findCostProgress/${siteId}`, {
+                            headers: { Authorization: `Bearer ${token}` },
+                            params: { page: priceChangePage - 1, size: 4 }
+                        }).then(res => setPriceChangedProducts(res.data))
+                    );
+                }
+
+                await Promise.all(requests);
             } catch (err) {
                 console.error("Ошибка при загрузке статистики", err);
             } finally {
@@ -92,7 +122,8 @@ export default function SiteStatsPage() {
         };
 
         fetchStats();
-    }, [siteId, newPage, oldPage]);
+    }, [siteId, newPage, oldPage, priceChangePage]);
+
 
     const handleLogout = async () => {
         try {
@@ -122,21 +153,11 @@ export default function SiteStatsPage() {
         <>
             <AppBar position="static" color="default" elevation={0} sx={{ bgcolor: 'white' }}>
                 <Toolbar>
-                    <IconButton
-                        edge="start"
-                        color="inherit"
-                        onClick={() => setOpenDrawer(true)}
-                        sx={{ mr: 2 }}
-                    >
+                    <IconButton edge="start" color="inherit" onClick={() => setOpenDrawer(true)} sx={{ mr: 2 }}>
                         <MenuIcon />
                     </IconButton>
 
-                    <IconButton
-                        edge="start"
-                        color="inherit"
-                        onClick={() => navigate(-1)}
-                        sx={{ mr: 2 }}
-                    >
+                    <IconButton edge="start" color="inherit" onClick={() => navigate(-1)} sx={{ mr: 2 }}>
                         <ArrowBackIcon />
                     </IconButton>
 
@@ -181,6 +202,7 @@ export default function SiteStatsPage() {
                 <Accordion
                     expanded={expanded === 'panel2'}
                     onChange={handleAccordionChange('panel2')}
+                    sx={{ mb: 3 }}
                 >
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
@@ -193,6 +215,26 @@ export default function SiteStatsPage() {
                             page={oldPage}
                             totalPages={oldProducts?.totalPages ?? 1}
                             onPageChange={(_, val) => setOldPage(val)}
+                            loading={loading}
+                        />
+                    </AccordionDetails>
+                </Accordion>
+
+                <Accordion
+                    expanded={expanded === 'panel3'}
+                    onChange={handleAccordionChange('panel3')}
+                >
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                            📊 Изменение цен ({priceChangedProducts?.totalElements ?? 0})
+                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                        <PriceChangeGrid
+                            products={priceChangedProducts?.content ?? []}
+                            page={priceChangePage}
+                            totalPages={priceChangedProducts?.totalPages ?? 1}
+                            onPageChange={(_, val) => setPriceChangePage(val)}
                             loading={loading}
                         />
                     </AccordionDetails>
@@ -333,19 +375,78 @@ function ProductGrid({
                     </Grid>
                 ))}
             </Grid>
+        </>
+    );
+}
 
-            {/*{totalPages > 1 && (*/}
-            {/*    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>*/}
-            {/*        <Pagination*/}
-            {/*            count={totalPages}*/}
-            {/*            page={page}*/}
-            {/*            onChange={onPageChange}*/}
-            {/*            color="primary"*/}
-            {/*            showFirstButton*/}
-            {/*            showLastButton*/}
-            {/*        />*/}
-            {/*    </Box>*/}
-            {/*)}*/}
+function PriceChangeGrid({
+    products,
+    page,
+    totalPages,
+    onPageChange,
+    loading
+}: {
+    products: ProductCostChange[],
+        page: number,
+        totalPages: number,
+        onPageChange: (event: React.ChangeEvent<unknown>, value: number) => void,
+        loading: boolean
+}) {
+    if (loading) return <Box display="flex" justifyContent="center" my={4}><CircularProgress /></Box>;
+    if (products.length === 0) return <Typography textAlign="center">Нет данных</Typography>;
+
+    return (
+        <>
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+                <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={onPageChange}
+                    color="primary"
+                    showFirstButton
+                    showLastButton
+                />
+            </Box>
+
+            <Grid container spacing={3}>
+                {products.map(({ product, costChange }) => {
+                    const chartData = Object.entries(costChange)
+                        .map(([date, price]) => ({ date, price: parseFloat(price.replace(/[^\d.]/g, '')) }));
+
+                    return (
+                        <Grid item xs={12} md={12} key={product.id}>
+                            <Card sx={{ p: 2, width: '300px', height: '400px' }}>
+                                <Grid container spacing={2} style={{ height: '100%' }}>
+                                    <Grid item xs={4}>
+                                        <img
+                                            src={product.imageUrl || "https://via.placeholder.com/300"}
+                                            alt={product.name}
+                                            style={{ width: '100%', objectFit: 'contain' }}
+                                        />
+                                        <Typography variant="subtitle1" sx={{ mt: 1 }}>
+                                            {product.name}
+                                        </Typography>
+                                        <Link href={product.productUrl} target="_blank">
+                                            <Button fullWidth size="small">Открыть</Button>
+                                        </Link>
+                                    </Grid>
+                                    <Grid item xs={8} style={{ height: '100%' }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <LineChart data={chartData}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Line type="monotone" dataKey="price" stroke="#8884d8" />
+                                            </LineChart>
+                                        </ResponsiveContainer>
+                                    </Grid>
+                                </Grid>
+                            </Card>
+                        </Grid>
+                    );
+                })}
+            </Grid>
         </>
     );
 }

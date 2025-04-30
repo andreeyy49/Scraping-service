@@ -68,10 +68,10 @@ public class BlogService {
                 .toList();
     }
 
-    public List<Blog> findLatestBlogsByKeywordsAndSiteId(List<String> keywords, String siteId) {
+    public List<Blog> findLatestBlogsByKeywordsAndSiteId(List<String> keywords, Long siteId) {
         List<Blog> byKeywords = findLatestBlogsByKeywords(keywords);
 
-        List<Blog> bySiteId = findLatestBySiteId(Long.parseLong(siteId));
+        List<Blog> bySiteId = findLatestBySiteId(siteId);
 
         return byKeywords.stream()
                 .filter(bySiteId::contains)

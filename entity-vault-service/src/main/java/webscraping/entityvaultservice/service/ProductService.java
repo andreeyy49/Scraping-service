@@ -2,10 +2,10 @@ package webscraping.entityvaultservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import webscraping.entityvaultservice.dto.PageDto;
+import webscraping.entityvaultservice.dto.ProductCostChangeDto;
 import webscraping.entityvaultservice.dto.ProductDto;
 import webscraping.entityvaultservice.model.Product;
 import webscraping.entityvaultservice.repository.ProductRepository;
@@ -47,7 +47,7 @@ public class ProductService {
                 .toList();
     }
 
-    public Page<ProductDto> findAllProductsByTitleInPage(PageRequest request, String title) {
+    public PageDto<ProductDto> findAllProductsByTitleInPage(PageRequest request, String title) {
         List<ProductDto> filteredProductsDto = findAllProductsByTitle(title);
         return getPage(request, filteredProductsDto);
     }
@@ -70,30 +70,25 @@ public class ProductService {
     }
 
 
-    public List<ProductDto> findAllProductsByTitleAndSiteId(String title, String siteId) {
+    public List<ProductDto> findAllProductsByTitleAndSiteId(String title, Long siteId) {
         List<ProductDto> byTitle = findAllProductsByTitle(title);
 
-        List<ProductDto> bySiteId = findLatestBySiteId(Long.parseLong(siteId));
+        List<ProductDto> bySiteId = findLatestBySiteId(siteId);
 
         return byTitle.stream().filter(bySiteId::contains)
                 .toList();
     }
 
-    public Page<ProductDto> findAllProductsByTitleAndSiteIdInPage(PageRequest request, String title, String siteId) {
+    public PageDto<ProductDto> findAllProductsByTitleAndSiteIdInPage(PageRequest request, String title, Long siteId) {
         List<ProductDto> productsDto = findAllProductsByTitleAndSiteId(title, siteId);
         return getPage(request, productsDto);
     }
 
-    public List<String> findCostProgress(Long siteId, String title) {
-        List<ProductDto> products = findAllProductsByTitleAndSiteId(title, siteId.toString());
-        return products.stream().map(ProductDto::getPrice).toList();
-    }
-
-    public Page<ProductDto> leftJoinProductsBySiteId(PageRequest request, Long siteId) {
+    public PageDto<ProductDto> leftJoinProductsBySiteId(PageRequest request, Long siteId) {
         return getPage(request, joinProductsBySiteId(siteId, JoinEnum.LEFT));
     }
 
-    public Page<ProductDto> rightJoinProductsBySiteId(PageRequest request, Long siteId) {
+    public PageDto<ProductDto> rightJoinProductsBySiteId(PageRequest request, Long siteId) {
         return getPage(request, joinProductsBySiteId(siteId, JoinEnum.RIGHT));
     }
 
@@ -134,6 +129,37 @@ public class ProductService {
         }
     }
 
+    private List<ProductCostChangeDto> getPriceHistoryBySiteId(Long siteId) {
+        List<Product> allProducts = productRepository.findAllBySiteId(siteId);
+
+        Map<String, ProductCostChangeDto> result = new HashMap<>();
+
+        for (Product product : allProducts) {
+            String key = product.getTitle().toLowerCase().trim() + "|" + product.getSiteId();
+
+            result.computeIfAbsent(key, k -> {
+                ProductCostChangeDto dto = new ProductCostChangeDto();
+                dto.setProduct(productToDto(product));
+                dto.setCostChange(new TreeMap<>());
+                return dto;
+            });
+
+            ProductCostChangeDto dto = result.get(key);
+
+            if (!dto.getCostChange().containsValue(product.getCost())) {
+                dto.getCostChange().put(product.getParseTime(), product.getCost());
+            }
+        }
+
+        return result.values().stream()
+                .filter(dto -> dto.getCostChange().size() > 1)
+                .toList();
+    }
+
+    public PageDto<ProductCostChangeDto> getPriceHistoryBySiteIdInPage(PageRequest request, Long siteId) {
+        return getPage(request, getPriceHistoryBySiteId(siteId));
+    }
+
     private Date findLastDate(List<Product> products) {
         return products.stream()
                 .map(Product::getParseTime)
@@ -164,15 +190,18 @@ public class ProductService {
         return productDto;
     }
 
-    private Page<ProductDto> getPage(PageRequest request, List<ProductDto> products) {
+    private <T> PageDto<T> getPage(PageRequest request, List<T> products) {
         int totalProducts = products.size();
         int start = (int) request.getOffset();
         int end = Math.min(start + request.getPageSize(), totalProducts);
+        int surplus = totalProducts % request.getPageSize();
+        if (surplus > 0) {
+            surplus = 1;
+        }
+        int totalPages = totalProducts / request.getPageSize() + surplus;
 
-        return new PageImpl<>(
-                products.subList(start, end),
-                request,
-                totalProducts
-        );
+        List<T> content = products.subList(start, end);
+
+        return new PageDto<>(content, request.getPageNumber(), request.getPageSize(), totalProducts, totalPages);
     }
 }
