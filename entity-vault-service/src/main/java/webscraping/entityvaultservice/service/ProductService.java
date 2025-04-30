@@ -2,9 +2,11 @@ package webscraping.entityvaultservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import webscraping.entityvaultservice.dto.ProductDto;
-import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.model.Product;
 import webscraping.entityvaultservice.repository.ProductRepository;
 import webscraping.entityvaultservice.util.JoinEnum;
@@ -45,6 +47,11 @@ public class ProductService {
                 .toList();
     }
 
+    public Page<ProductDto> findAllProductsByTitleInPage(PageRequest request, String title) {
+        List<ProductDto> filteredProductsDto = findAllProductsByTitle(title);
+        return getPage(request, filteredProductsDto);
+    }
+
     public List<ProductDto> findAllProductsByTitle(String title) {
         List<Product> products = productRepository.findAllProductsByTitle(title);
 
@@ -72,17 +79,22 @@ public class ProductService {
                 .toList();
     }
 
+    public Page<ProductDto> findAllProductsByTitleAndSiteIdInPage(PageRequest request, String title, String siteId) {
+        List<ProductDto> productsDto = findAllProductsByTitleAndSiteId(title, siteId);
+        return getPage(request, productsDto);
+    }
+
     public List<String> findCostProgress(Long siteId, String title) {
         List<ProductDto> products = findAllProductsByTitleAndSiteId(title, siteId.toString());
         return products.stream().map(ProductDto::getPrice).toList();
     }
 
-    public List<ProductDto> leftJoinProductsBySiteId(Long siteId) {
-        return joinProductsBySiteId(siteId, JoinEnum.LEFT);
+    public Page<ProductDto> leftJoinProductsBySiteId(PageRequest request, Long siteId) {
+        return getPage(request, joinProductsBySiteId(siteId, JoinEnum.LEFT));
     }
 
-    public List<ProductDto> rightJoinProductsBySiteId(Long siteId) {
-        return joinProductsBySiteId(siteId, JoinEnum.RIGHT);
+    public Page<ProductDto> rightJoinProductsBySiteId(PageRequest request, Long siteId) {
+        return getPage(request, joinProductsBySiteId(siteId, JoinEnum.RIGHT));
     }
 
     public List<ProductDto> joinProductsBySiteId(Long siteId, JoinEnum joinEnum) {
@@ -150,5 +162,17 @@ public class ProductService {
         productDto.setImageUrl(product.getImages().get(0));
         productDto.setProductUrl(product.getPath());
         return productDto;
+    }
+
+    private Page<ProductDto> getPage(PageRequest request, List<ProductDto> products) {
+        int totalProducts = products.size();
+        int start = (int) request.getOffset();
+        int end = Math.min(start + request.getPageSize(), totalProducts);
+
+        return new PageImpl<>(
+                products.subList(start, end),
+                request,
+                totalProducts
+        );
     }
 }

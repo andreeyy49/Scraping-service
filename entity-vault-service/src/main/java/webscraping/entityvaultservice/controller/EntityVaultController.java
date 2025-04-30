@@ -1,6 +1,8 @@
 package webscraping.entityvaultservice.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
 import webscraping.entityvaultservice.dto.ProductCostProgressDto;
 import webscraping.entityvaultservice.dto.ProductDto;
@@ -40,14 +42,18 @@ public class EntityVaultController {
     }
 
     @GetMapping("/product/findAllByTitle/{title}")
-    public List<ProductDto> findAllProductsByTitle(@PathVariable("title") String title) {
-        return productService.findAllProductsByTitle(title);
+    public Page<ProductDto> findAllProductsByTitle(@PathVariable("title") String title,
+                                                   @RequestParam(name = "page", defaultValue = "0") int page,
+                                                   @RequestParam(name = "size", defaultValue = "10") int size) {
+        return productService.findAllProductsByTitleInPage(PageRequest.of(page, size), title);
     }
 
     @GetMapping("/product/findAllByTitleAndSiteId/{title}/{siteId}")
-    public List<ProductDto> findAllProductsByTitleAndSiteId(@PathVariable("title") String title,
-                                                            @PathVariable("siteId") String siteId) {
-        return productService.findAllProductsByTitleAndSiteId(title, siteId);
+    public Page<ProductDto> findAllProductsByTitleAndSiteId(@PathVariable("title") String title,
+                                                            @PathVariable("siteId") String siteId,
+                                                            @RequestParam(name = "page", defaultValue = "0") int page,
+                                                            @RequestParam(name = "size", defaultValue = "10") int size) {
+        return productService.findAllProductsByTitleAndSiteIdInPage(PageRequest.of(page, size), title, siteId);
     }
 
     @PostMapping("/product/findCostProgress")
@@ -57,12 +63,16 @@ public class EntityVaultController {
     }
 
     @GetMapping("/product/findNew/{siteId}")
-    public List<ProductDto> findNewProducts(@PathVariable("siteId") Long siteId) {
-        return productService.rightJoinProductsBySiteId(siteId);
+    public Page<ProductDto> findNewProducts(@PathVariable("siteId") Long siteId,
+                                            @RequestParam(name = "page", defaultValue = "0") int page,
+                                            @RequestParam(name = "size", defaultValue = "10") int size) {
+        return productService.rightJoinProductsBySiteId(PageRequest.of(page, size), siteId);
     }
 
     @GetMapping("/product/findOld/{siteId}")
-    public List<ProductDto> findOldProducts(@PathVariable("siteId") Long siteId) {
-        return productService.leftJoinProductsBySiteId(siteId);
+    public Page<ProductDto> findOldProducts(@PathVariable("siteId") Long siteId,
+                                            @RequestParam(name = "page", defaultValue = "0") int page,
+                                            @RequestParam(name = "size", defaultValue = "10") int size) {
+        return productService.leftJoinProductsBySiteId(PageRequest.of(page, size), siteId);
     }
 }
