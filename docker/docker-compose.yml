@@ -100,10 +100,10 @@ services:
     depends_on:
       - discovery-app
       - postgres
-      - redis  # Подключение к Redis-кластеру через один из узлов
+      - redis
       - kafka
     environment:
-      - SPRING_REDIS_HOST=redis  # Можно указать любой узел из кластера
+      - SPRING_REDIS_HOST=redis
       - SPRING_REDIS_PORT=6379
       - SPRING_REDIS_PASSWORD=password
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/web_scraping_auth_db
@@ -185,6 +185,11 @@ services:
       - discovery-app
       - kafka
       - postgres
+      - redis
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=password
     networks:
       - vote-app-network
 

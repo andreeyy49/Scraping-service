@@ -6,6 +6,7 @@ spring:
       ddl-auto: none
     show-sql: true
 
+
   datasource:
     url: jdbc:postgresql://postgres:5432/web_scraping_entity_vault_db
     username: postgres
@@ -18,6 +19,11 @@ spring:
 
   kafka:
     bootstrap-servers: kafka:9092
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: password
 
 app:
   kafka:
@@ -33,3 +39,7 @@ eureka:
     service-url:
       defaultZone: http://discovery:8761/eureka/
 
+logging:
+  level:
+    org.springframework:
+      cache: DEBUG
