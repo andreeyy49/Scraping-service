@@ -66,7 +66,6 @@ public class ProductServiceCache {
                 .toList();
     }
 
-
     @Cacheable(value = "joinProductsBySiteId", key = "#siteId + '-' + #joinEnum")
     public List<ProductDto> joinProductsBySiteId(Long siteId, JoinEnum joinEnum) {
         List<Date> dates = productRepository.findLastTwoUniqueDatesBySiteId(siteId);
