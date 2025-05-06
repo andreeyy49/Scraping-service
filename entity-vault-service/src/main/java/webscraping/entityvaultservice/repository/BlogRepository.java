@@ -20,4 +20,6 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             """, nativeQuery = true)
     List<Blog> findAllByKeywords(@Param("keywords") List<String> keywords);
 
+    @Query(value = "SELECT key_word, COUNT(*) FROM blog_key_words GROUP BY key_word", nativeQuery = true)
+    List<Object[]> findKeywordsWithCount();
 }

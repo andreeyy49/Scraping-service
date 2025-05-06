@@ -2,12 +2,17 @@ package webscraping.entityvaultservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import webscraping.entityvaultservice.dto.BlogDto;
+import webscraping.entityvaultservice.dto.PageDto;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.repository.BlogRepository;
 
 import java.util.*;
-import java.util.stream.Collectors;
+
+import static webscraping.entityvaultservice.util.PageUtil.getPage;
 
 @Service
 @RequiredArgsConstructor
@@ -16,12 +21,14 @@ public class BlogService {
 
     private final BlogRepository blogRepository;
 
+    private final BlogServiceCache blogServiceCache;
+
     public Blog save(Blog blog) {
         return blogRepository.save(blog);
     }
 
     public List<String> findLatestImageUrlsBySiteId(Long siteId) {
-        List<Blog> blogs = findLatestBySiteId(siteId);
+        List<BlogDto> blogs = blogServiceCache.findLatestBySiteId(siteId);
 
         if(blogs.isEmpty()) return new ArrayList<>();
 
@@ -29,72 +36,40 @@ public class BlogService {
                 .flatMap(blog -> blog.getImages().stream()).toList();
     }
 
-    public List<Blog> findLatestBySiteId(Long siteId) {
-        List<Blog> blogs = blogRepository.findAllBySiteId(siteId);
+    public List<BlogDto> findLatestBlogsByKeywordsAndSiteId(List<String> keywords, Long siteId) {
+        List<BlogDto> byKeywords = blogServiceCache.findLatestBlogsByKeywords(keywords);
 
-        Date lastDate = findLastDate(blogs);
-
-        if(lastDate == null) {
-            return new ArrayList<>();
-        }
-
-        return blogs.stream()
-                .filter(blog -> blog.getParseTime().equals(lastDate))
-                .toList();
-    }
-
-    public List<Blog> findLatestBlogsByKeywords(List<String> keywords) {
-        if (keywords == null || keywords.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<Blog> blogs = blogRepository.findAllByKeywords(keywords);
-
-        if (blogs.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        Map<Long, List<Blog>> blogsGroupedBySiteId = blogs.stream()
-                .collect(Collectors.groupingBy(Blog::getSiteId));
-
-        Map<Long, Date> lastDates = findLastDates(blogsGroupedBySiteId);
-
-        return blogsGroupedBySiteId.entrySet().stream()
-                .flatMap(entry -> entry.getValue().stream()
-                        .filter(blog -> {
-                            Date lastDate = lastDates.get(entry.getKey());
-                            return lastDate != null && blog.getParseTime().compareTo(lastDate) == 0;
-                        }))
-                .toList();
-    }
-
-    public List<Blog> findLatestBlogsByKeywordsAndSiteId(List<String> keywords, Long siteId) {
-        List<Blog> byKeywords = findLatestBlogsByKeywords(keywords);
-
-        List<Blog> bySiteId = findLatestBySiteId(siteId);
+        List<BlogDto> bySiteId = blogServiceCache.findLatestBySiteId(siteId);
 
         return byKeywords.stream()
                 .filter(bySiteId::contains)
                 .toList();
     }
 
-    private Date findLastDate(List<Blog> blogs) {
-        return blogs.stream()
-                .map(Blog::getParseTime)
-                .max(Date::compareTo)
-                .orElse(null);
+    public PageDto<BlogDto> findLatestBlogsByKeywordsInPage(PageRequest request, List<String> keywords) {
+        return getPage(request, blogServiceCache.findLatestBlogsByKeywords(keywords));
     }
 
-    private Map<Long, Date> findLastDates(Map<Long, List<Blog>> blogs) {
-        Map<Long, Date> lastDates = new HashMap<>();
+    public PageDto<BlogDto> findLatestBlogsByKeywordsAndSiteIdInPage(PageRequest request, List<String> keywords, Long siteId) {
+        return getPage(request, findLatestBlogsByKeywordsAndSiteId(keywords, siteId));
+    }
 
-        for(Map.Entry<Long, List<Blog>> entry : blogs.entrySet()) {
-            lastDates.put(entry.getKey(), entry.getValue().stream()
-                    .map(Blog::getParseTime)
-                    .max(Date::compareTo)
-                    .orElse(null));
+    public List<String> findAllCategory() {
+        List<Object[]> keysInDb = blogRepository.findKeywordsWithCount();
+
+        Map<String, Long> map = new HashMap<>();
+
+        for(Object[] objects: keysInDb) {
+            String key = (String) objects[0];
+            Long count = ((Number) objects[1]).longValue();
+
+            map.put(key, count);
         }
 
-        return lastDates;
+        return map.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(10)
+                .map(Map.Entry::getKey)
+                .toList();
     }
 }

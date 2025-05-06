@@ -19,7 +19,8 @@ import {
     Divider,
     Collapse,
     Chip,
-    MenuItem
+    MenuItem,
+    Pagination
 } from "@mui/material";
 import {
     Menu as MenuIcon,
@@ -52,6 +53,14 @@ interface Site {
     status: "INDEXING" | "INDEXED" | "FAILED";
 }
 
+interface PaginatedResponse<T> {
+    content: T[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+    size: number;
+}
+
 export default function AnalyzeBlogsPage() {
     const [keywords, setKeywords] = useState("");
     const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -60,35 +69,98 @@ export default function AnalyzeBlogsPage() {
     const [openDrawer, setOpenDrawer] = useState(false);
     const [sites, setSites] = useState<Site[]>([]);
     const [selectedSite, setSelectedSite] = useState("");
+    const [page, setPage] = useState(1);
+    const [size, setSize] = useState(5);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalElements, setTotalElements] = useState(0);
+    const [categories, setCategories] = useState<string[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
     const navigate = useNavigate();
 
-    const handleSearch = async () => {
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const res = await axios.get("http://localhost:8080/api/v1/entity-vault/blog/allCategory", {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+                setCategories(res.data);
+            } catch (e) {
+                console.error("Ошибка при загрузке категорий", e);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    const handleSearchByCategory = async (category: string, newPage = 1, newSize = size) => {
+        setSelectedCategory(category);
+        setKeywords(category); // Устанавливаем категорию как ключевое слово для отображения
+        setLoading(true);
+        try {
+            let url;
+            const keywordsArray = [category.trim()];
+            if (selectedSite) {
+                // Поиск по категории и сайту
+                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
+            } else {
+                // Поиск только по категории
+                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
+            }
+
+            const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            });
+
+            setBlogs(response.data.content);
+            setTotalPages(response.data.totalPages);
+            setTotalElements(response.data.totalElements);
+            setPage(newPage);
+            setSize(newSize);
+        } catch (error) {
+            console.error("Ошибка при поиске блогов по категории:", error);
+            alert("Произошла ошибка при поиске блогов по категории");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSearch = async (newPage = 1, newSize = size) => {
         if (!keywords.trim()) return;
 
+        setSelectedCategory(null); // Сбрасываем выбранную категорию при ручном поиске
         setLoading(true);
         try {
             let url;
             const keywordsArray = keywords.split(",").map(k => k.trim());
 
             if (selectedSite) {
-                // Поиск по выбранному сайту
-                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}`;
-                const response = await axios.post<Blog[]>(url, keywordsArray, {
+                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
+                const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
                 });
-                setBlogs(response.data);
+                setBlogs(response.data.content);
+                setTotalPages(response.data.totalPages);
+                setTotalElements(response.data.totalElements);
             } else {
-                // Поиск по всем сайтам
-                url = "http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords";
-                const response = await axios.post<Blog[]>(url, keywordsArray, {
+                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
+                const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
                 });
-                setBlogs(response.data);
+                setBlogs(response.data.content);
+                setTotalPages(response.data.totalPages);
+                setTotalElements(response.data.totalElements);
             }
+            setPage(newPage);
+            setSize(newSize);
         } catch (error) {
             console.error("Ошибка при поиске блогов:", error);
             alert("Произошла ошибка при поиске блогов");
@@ -97,8 +169,21 @@ export default function AnalyzeBlogsPage() {
         }
     };
 
+    const handlePageChange = (event: React.ChangeEvent<unknown>, newPage: number) => {
+        if (selectedCategory) {
+            handleSearchByCategory(selectedCategory, newPage);
+        } else {
+            handleSearch(newPage);
+        }
+    };
+
     const handleSiteChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedSite(event.target.value);
+        setPage(1);
+        if (selectedCategory) {
+            // Если выбрана категория, выполняем поиск по новой категории и сайту
+            handleSearchByCategory(selectedCategory, 1);
+        }
     };
 
     const handleLogout = async () => {
@@ -194,7 +279,7 @@ export default function AnalyzeBlogsPage() {
 
                     <Button
                         variant="contained"
-                        onClick={handleSearch}
+                        onClick={() => handleSearch()}
                         disabled={loading || !keywords.trim()}
                         sx={{ minWidth: 120 }}
                     >
@@ -219,123 +304,140 @@ export default function AnalyzeBlogsPage() {
                 )}
 
                 {blogs.length > 0 && (
-                    <Grid container spacing={3}>
-                        {blogs.map((blog) => (
-                            <Grid item xs={12} key={blog.id}>
-                                <Card sx={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    '&:hover': {
-                                        boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
-                                    }
-                                }}>
-                                    <CardContent>
-                                        <Box sx={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'flex-start',
-                                            mb: 1
-                                        }}>
-                                            <Box>
-                                                <Typography variant="subtitle2" color="text.secondary">
-                                                    {new Date(blog.parseTime).toLocaleString()}
-                                                </Typography>
-                                                <Box sx={{ mt: 1 }}>
-                                                    {blog.keyWords.slice(0, 5).map((keyword, index) => (
-                                                        <Chip
-                                                            key={index}
-                                                            label={keyword}
-                                                            size="small"
-                                                            sx={{ mr: 0.5, mb: 0.5 }}
-                                                        />
-                                                    ))}
+                    <>
+                        <Grid container spacing={3}>
+                            {blogs.map((blog) => (
+                                <Grid item xs={12} key={blog.id}>
+                                    <Card sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        '&:hover': {
+                                            boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.1)'
+                                        }
+                                    }}>
+                                        <CardContent>
+                                            <Box sx={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'flex-start',
+                                                mb: 1
+                                            }}>
+                                                <Box>
+                                                    <Typography variant="subtitle2" color="text.secondary">
+                                                        {new Date(blog.parseTime).toLocaleString()}
+                                                    </Typography>
+                                                    <Box sx={{ mt: 1 }}>
+                                                        {blog.keyWords.slice(0, 5).map((keyword, index) => (
+                                                            <Chip
+                                                                key={index}
+                                                                label={keyword}
+                                                                size="small"
+                                                                sx={{ mr: 0.5, mb: 0.5 }}
+                                                            />
+                                                        ))}
+                                                    </Box>
                                                 </Box>
+                                                <IconButton
+                                                    onClick={() => setExpandedId(expandedId === blog.id ? null : blog.id)}
+                                                    aria-label={expandedId === blog.id ? "Свернуть" : "Развернуть"}
+                                                    size="small"
+                                                >
+                                                    {expandedId === blog.id ? <ExpandLess /> : <ExpandMore />}
+                                                </IconButton>
                                             </Box>
-                                            <IconButton
-                                                onClick={() => setExpandedId(expandedId === blog.id ? null : blog.id)}
-                                                aria-label={expandedId === blog.id ? "Свернуть" : "Развернуть"}
-                                                size="small"
-                                            >
-                                                {expandedId === blog.id ? <ExpandLess /> : <ExpandMore />}
-                                            </IconButton>
-                                        </Box>
 
-                                        <Collapse in={expandedId === blog.id} collapsedSize={120}>
-                                            <Typography
-                                                variant="body1"
-                                                paragraph
-                                                sx={{
-                                                    whiteSpace: 'pre-line',
-                                                    lineHeight: 1.6,
-                                                    textAlign: 'justify',
-                                                    mt: 2
-                                                }}
-                                            >
-                                                {blog.blogText}
-                                            </Typography>
-                                            {expandedId === blog.id && blog.blogText.length > 1000 && (
-                                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                                                    <Button
-                                                        startIcon={<ExpandLess />}
-                                                        onClick={() => setExpandedId(null)}
-                                                        size="small"
-                                                        sx={{ mt: 1 }}
-                                                    >
-                                                        Свернуть статью
-                                                    </Button>
-                                                </Box>
-                                            )}
-                                        </Collapse>
-                                    </CardContent>
-
-                                    {blog.images.length > 0 && (
-                                        <Box sx={{
-                                            p: 2,
-                                            display: 'flex',
-                                            gap: 1,
-                                            overflowX: 'auto',
-                                            borderTop: '1px solid',
-                                            borderColor: 'divider'
-                                        }}>
-                                            {blog.images.map((img, index) => (
-                                                <CardMedia
-                                                    key={index}
-                                                    component="img"
-                                                    image={img}
-                                                    alt={`Изображение ${index + 1}`}
+                                            <Collapse in={expandedId === blog.id} collapsedSize={120}>
+                                                <Typography
+                                                    variant="body1"
+                                                    paragraph
                                                     sx={{
-                                                        width: 120,
-                                                        height: 90,
-                                                        objectFit: 'cover',
-                                                        borderRadius: 1,
-                                                        border: '1px solid #eee',
+                                                        whiteSpace: 'pre-line',
+                                                        lineHeight: 1.6,
+                                                        textAlign: 'justify',
+                                                        mt: 2
                                                     }}
-                                                />
-                                            ))}
-                                        </Box>
-                                    )}
+                                                >
+                                                    {blog.blogText}
+                                                </Typography>
+                                                {expandedId === blog.id && blog.blogText.length > 1000 && (
+                                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                                                        <Button
+                                                            startIcon={<ExpandLess />}
+                                                            onClick={() => setExpandedId(null)}
+                                                            size="small"
+                                                            sx={{ mt: 1 }}
+                                                        >
+                                                            Свернуть статью
+                                                        </Button>
+                                                    </Box>
+                                                )}
+                                            </Collapse>
+                                        </CardContent>
 
-                                    <Box sx={{ p: 2 }}>
-                                        <Link
-                                            href={blog.path}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            sx={{ textDecoration: 'none' }}
-                                        >
-                                            <Button
-                                                fullWidth
-                                                variant="contained"
-                                                size="small"
-                                                sx={{ textTransform: 'none' }}
+                                        {blog.images.length > 0 && (
+                                            <Box sx={{
+                                                p: 2,
+                                                display: 'flex',
+                                                gap: 1,
+                                                overflowX: 'auto',
+                                                borderTop: '1px solid',
+                                                borderColor: 'divider'
+                                            }}>
+                                                {blog.images.map((img, index) => (
+                                                    <CardMedia
+                                                        key={index}
+                                                        component="img"
+                                                        image={img}
+                                                        alt={`Изображение ${index + 1}`}
+                                                        sx={{
+                                                            width: 120,
+                                                            height: 90,
+                                                            objectFit: 'cover',
+                                                            borderRadius: 1,
+                                                            border: '1px solid #eee',
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        )}
+
+                                        <Box sx={{ p: 2 }}>
+                                            <Link
+                                                href={blog.path}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                sx={{ textDecoration: 'none' }}
                                             >
-                                                Перейти к оригинальной статье
-                                            </Button>
-                                        </Link>
-                                    </Box>
-                                </Card>
-                            </Grid>
-                        ))}
-                    </Grid>
+                                                <Button
+                                                    fullWidth
+                                                    variant="contained"
+                                                    size="small"
+                                                    sx={{ textTransform: 'none' }}
+                                                >
+                                                    Перейти к оригинальной статье
+                                                </Button>
+                                            </Link>
+                                        </Box>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                            <Pagination
+                                count={totalPages}
+                                page={page}
+                                onChange={handlePageChange}
+                                color="primary"
+                                showFirstButton
+                                showLastButton
+                            />
+                        </Box>
+
+                        <Typography variant="body2" color="text.secondary" textAlign="center" mt={1}>
+                            Всего статей: {totalElements}
+                        </Typography>
+                    </>
                 )}
 
                 {!loading && blogs.length === 0 && keywords && (
@@ -344,6 +446,33 @@ export default function AnalyzeBlogsPage() {
                     </Typography>
                 )}
             </Container>
+
+            <Box sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                overflowX: 'auto',
+                pb: 2,
+                mb: 2,
+                gap: 1,
+                maxWidth: '100%',
+                flexWrap: 'nowrap',
+                scrollbarWidth: 'none',
+                '&::-webkit-scrollbar': { display: 'none' }
+            }}>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                    {categories.map((category) => (
+                        <Chip
+                            key={category}
+                            label={category}
+                            clickable
+                            onClick={() => handleSearchByCategory(category)}
+                            sx={{ flexShrink: 0 }}
+                            color={selectedCategory === category ? "primary" : "default"}
+                            variant={selectedCategory === category ? "filled" : "outlined"}
+                        />
+                    ))}
+                </Box>
+            </Box>
 
             <Drawer
                 anchor="left"

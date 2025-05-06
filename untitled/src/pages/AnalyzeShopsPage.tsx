@@ -64,6 +64,7 @@ export default function AnalyzeShopsPage() {
     const [selectedSite, setSelectedSite] = useState("");
     const [page, setPage] = useState(1);
     const [size, setSize] = useState(9);
+
     const [totalPages, setTotalPages] = useState(0);
     const [totalElements, setTotalElements] = useState(0);
 

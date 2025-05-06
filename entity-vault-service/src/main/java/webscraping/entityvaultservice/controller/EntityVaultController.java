@@ -4,10 +4,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.*;
+import webscraping.entityvaultservice.dto.BlogDto;
 import webscraping.entityvaultservice.dto.PageDto;
 import webscraping.entityvaultservice.dto.ProductCostChangeDto;
 import webscraping.entityvaultservice.dto.ProductDto;
-import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.service.BlogService;
 import webscraping.entityvaultservice.service.ProductService;
 
@@ -22,20 +22,31 @@ public class EntityVaultController {
     private final BlogService blogService;
     private final ProductService productService;
 
+    @GetMapping("/blog/allCategory")
+    public List<String> findAllCategory() {
+        return blogService.findAllCategory();
+    }
+
     @GetMapping("/blog/images/{site_id}")
     public List<String> findLatestImageUrlsBySiteIdInBlog(@PathVariable("site_id") Long siteId) {
         return blogService.findLatestImageUrlsBySiteId(siteId);
     }
 
     @PostMapping("/blog/findByKeyWords")
-    public List<Blog> findByKeyWords(@RequestBody List<String> keywords) {
-        return blogService.findLatestBlogsByKeywords(keywords);
+    public PageDto<BlogDto> findByKeyWords(@RequestBody List<String> keywords,
+                                           @RequestParam(name = "page", defaultValue = "0") int page,
+                                           @RequestParam(name = "size", defaultValue = "10") int size) {
+        PageDto<BlogDto> pageDto = blogService.findLatestBlogsByKeywordsInPage(PageRequest.of(page, size), keywords);
+        log.info("Blogs count: {} \n page: {}, size: {}", pageDto.getContent().size(), page, size);
+        return pageDto;
     }
 
     @PostMapping("/blog/findByKeyWordsAndSiteId/{siteId}")
-    public List<Blog> findByKeyWordsAndSiteId(@RequestBody List<String> keywords,
-                                              @PathVariable("siteId") Long siteId) {
-        return blogService.findLatestBlogsByKeywordsAndSiteId(keywords, siteId);
+    public PageDto<BlogDto> findByKeyWordsAndSiteId(@RequestBody List<String> keywords,
+                                              @PathVariable("siteId") Long siteId,
+                                              @RequestParam(name = "page", defaultValue = "0") int page,
+                                              @RequestParam(name = "size", defaultValue = "10") int size) {
+        return blogService.findLatestBlogsByKeywordsAndSiteIdInPage(PageRequest.of(page, size), keywords, siteId);
     }
 
     @GetMapping("/product/images/{site_id}")
@@ -45,30 +56,30 @@ public class EntityVaultController {
 
     @GetMapping("/product/findAllByTitle/{title}")
     public PageDto<ProductDto> findAllProductsByTitle(@PathVariable("title") String title,
-                                                   @RequestParam(name = "page", defaultValue = "0") int page,
-                                                   @RequestParam(name = "size", defaultValue = "10") int size) {
+                                                      @RequestParam(name = "page", defaultValue = "0") int page,
+                                                      @RequestParam(name = "size", defaultValue = "10") int size) {
         return productService.findAllProductsByTitleInPage(PageRequest.of(page, size), title);
     }
 
     @GetMapping("/product/findAllByTitleAndSiteId/{title}/{siteId}")
     public PageDto<ProductDto> findAllProductsByTitleAndSiteId(@PathVariable("title") String title,
-                                                            @PathVariable("siteId") Long siteId,
-                                                            @RequestParam(name = "page", defaultValue = "0") int page,
-                                                            @RequestParam(name = "size", defaultValue = "10") int size) {
+                                                               @PathVariable("siteId") Long siteId,
+                                                               @RequestParam(name = "page", defaultValue = "0") int page,
+                                                               @RequestParam(name = "size", defaultValue = "10") int size) {
         return productService.findAllProductsByTitleAndSiteIdInPage(PageRequest.of(page, size), title, siteId);
     }
 
     @GetMapping("/product/findCostProgress/{siteId}")
     public PageDto<ProductCostChangeDto> findCostProgress(@PathVariable("siteId") Long siteId,
-                                                       @RequestParam(name = "page", defaultValue = "0") int page,
-                                                       @RequestParam(name = "size", defaultValue = "10") int size) {
+                                                          @RequestParam(name = "page", defaultValue = "0") int page,
+                                                          @RequestParam(name = "size", defaultValue = "10") int size) {
         return productService.getPriceHistoryBySiteIdInPage(PageRequest.of(page, size), siteId);
     }
 
     @GetMapping("/product/findNew/{siteId}")
     public PageDto<ProductDto> findNewProducts(@PathVariable("siteId") Long siteId,
-                                            @RequestParam(name = "page", defaultValue = "0") int page,
-                                            @RequestParam(name = "size", defaultValue = "10") int size) {
+                                               @RequestParam(name = "page", defaultValue = "0") int page,
+                                               @RequestParam(name = "size", defaultValue = "10") int size) {
         return productService.rightJoinProductsBySiteId(PageRequest.of(page, size), siteId);
     }
 

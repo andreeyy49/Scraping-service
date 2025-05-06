@@ -14,6 +14,8 @@ import webscraping.entityvaultservice.util.JoinEnum;
 
 import java.util.*;
 
+import static webscraping.entityvaultservice.util.PageUtil.getPage;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -38,7 +40,7 @@ public class ProductService {
     }
 
 
-    @CacheEvict(value = {"findAllProductsByTitle"}, allEntries = true)
+//    @CacheEvict(value = {"findAllProductsByTitle"}, allEntries = true)
     public PageDto<ProductDto> findAllProductsByTitleInPage(PageRequest request, String title) {
         try {
             return getPage(request, productServiceCache.findAllProductsByTitle(title));
@@ -115,20 +117,5 @@ public class ProductService {
             log.error(e.getMessage());
         }
         return null;
-    }
-
-    private <T> PageDto<T> getPage(PageRequest request, List<T> products) {
-        int totalProducts = products.size();
-        int start = (int) request.getOffset();
-        int end = Math.min(start + request.getPageSize(), totalProducts);
-        int surplus = totalProducts % request.getPageSize();
-        if (surplus > 0) {
-            surplus = 1;
-        }
-        int totalPages = totalProducts / request.getPageSize() + surplus;
-
-        List<T> content = products.subList(start, end);
-
-        return new PageDto<>(content, request.getPageNumber(), request.getPageSize(), totalProducts, totalPages);
     }
 }
