@@ -9,4 +9,8 @@
         <sqlFile path="db/changelog/V1__create_blog_and_product_tables.sql"/>
     </changeSet>
 
+    <changeSet id="2" author="Andrei">
+        <sqlFile path="db/changelog/V2__add_blog_hash.sql"/>
+    </changeSet>
+
 </databaseChangeLog>

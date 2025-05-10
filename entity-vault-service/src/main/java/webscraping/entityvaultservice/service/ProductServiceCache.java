@@ -77,9 +77,6 @@ public class ProductServiceCache {
         List<Product> lastProducts = productRepository.findAllByParseTime(dates.get(0));
         List<Product> preLastProducts = productRepository.findAllByParseTime(dates.get(1));
 
-        log.info("First date {}, second {}", dates.get(0), dates.get(1));
-        log.info("New product size {}, old product size {}", lastProducts.size(), preLastProducts.size());
-
         Function<Product, String> key = k ->
                 k.getTitle().toLowerCase().trim() + "|" + k.getSiteId();
 

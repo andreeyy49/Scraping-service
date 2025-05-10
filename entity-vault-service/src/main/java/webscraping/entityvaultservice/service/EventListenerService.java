@@ -9,6 +9,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.model.Product;
+import webscraping.entityvaultservice.util.HashUtil;
 
 @Service
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class EventListenerService {
         try {
             productService.save(objectMapper.readValue(record.value(), Product.class));
         } catch (JsonProcessingException e) {
-            log.error("Parse error: {}", e.getMessage());
+            log.error("Product parse error: {}", e.getMessage());
         }
 
     }
@@ -34,9 +35,11 @@ public class EventListenerService {
     public void listenBlogTopic(ConsumerRecord<String, String> record) {
 
         try {
-            blogService.save(objectMapper.readValue(record.value(), Blog.class));
+            Blog blog = objectMapper.readValue(record.value(), Blog.class);
+            blog.setHash(HashUtil.getMd5Hash(blog.getBlogText()));
+            blogService.save(blog);
         } catch (JsonProcessingException e) {
-            log.error("Parse error: {}", e.getMessage());
+            log.error("Blog parse error: {}", e.getMessage());
         }
 
     }

@@ -3,10 +3,10 @@ import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import RegisterPage from "./pages/RegisterPage";
 import AddSitePage from "./pages/AddSitePage";
-import SiteDetailsPage from "./pages/SiteDetailsPage";
 import AnalyzeShopsPage from "./pages/AnalyzeShopsPage";
 import AnalyzeBlogsPage from "./pages/AnalyzeBlogsPage";
 import SiteStatsPage from "./pages/SiteStatsPage";
+import BlogStatsPage from "./pages/BlogStatsPage";
 
 function App() {
     return (
@@ -20,8 +20,8 @@ function App() {
                 <Route path="/analyze-shops" element={<AnalyzeShopsPage/>}/>
                 <Route path="/analyze-blogs" element={<AnalyzeBlogsPage/>}/>
                 <Route path="/add-site" element={<AddSitePage/>}/>
-                <Route path="/site/:id" element={<SiteDetailsPage/>}/>
                 <Route path="/site-stats/:siteId" element={<SiteStatsPage />} />
+                <Route path="/blog-stats/:siteId" element={<BlogStatsPage />} />
             </Routes>
         </BrowserRouter>
     );

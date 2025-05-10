@@ -289,7 +289,7 @@ export default function AnalyzeBlogsPage() {
                     <Button
                         variant="outlined"
                         color="primary"
-                        onClick={() => navigate(`/site-stats/${selectedSite}`)}
+                        onClick={() => navigate(`/blog-stats/${selectedSite}`)}
                         disabled={!selectedSite}
                         sx={{ minWidth: 180 }}
                     >

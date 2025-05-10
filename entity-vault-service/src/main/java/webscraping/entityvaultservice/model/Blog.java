@@ -31,6 +31,8 @@ public class Blog implements Serializable {
     @Column(name = "site_id")
     private long siteId;
 
+    private String hash;
+
     @ElementCollection
     @CollectionTable(name = "blog_key_words", joinColumns = @JoinColumn(name = "blog_id"))
     @Column(name = "key_word")

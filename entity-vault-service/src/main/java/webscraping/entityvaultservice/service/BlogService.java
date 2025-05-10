@@ -2,13 +2,14 @@ package webscraping.entityvaultservice.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import webscraping.entityvaultservice.dto.BlogDto;
+import webscraping.entityvaultservice.dto.BlogTextChangeDto;
 import webscraping.entityvaultservice.dto.PageDto;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.repository.BlogRepository;
+import webscraping.entityvaultservice.util.JoinEnum;
 
 import java.util.*;
 
@@ -30,7 +31,7 @@ public class BlogService {
     public List<String> findLatestImageUrlsBySiteId(Long siteId) {
         List<BlogDto> blogs = blogServiceCache.findLatestBySiteId(siteId);
 
-        if(blogs.isEmpty()) return new ArrayList<>();
+        if (blogs.isEmpty()) return new ArrayList<>();
 
         return blogs.stream()
                 .flatMap(blog -> blog.getImages().stream()).toList();
@@ -59,7 +60,7 @@ public class BlogService {
 
         Map<String, Long> map = new HashMap<>();
 
-        for(Object[] objects: keysInDb) {
+        for (Object[] objects : keysInDb) {
             String key = (String) objects[0];
             Long count = ((Number) objects[1]).longValue();
 
@@ -71,5 +72,17 @@ public class BlogService {
                 .limit(10)
                 .map(Map.Entry::getKey)
                 .toList();
+    }
+
+    public PageDto<BlogTextChangeDto> findChangedBlogsInPage(PageRequest request, Long siteId) {
+        return getPage(request, blogServiceCache.findChangedBlogs(siteId));
+    }
+
+    public PageDto<BlogDto> rightJoinBlogsBySiteId(PageRequest request, Long siteId) {
+        return getPage(request, blogServiceCache.joinProductsBySiteId(siteId, JoinEnum.RIGHT));
+    }
+
+    public PageDto<BlogDto> leftJoinBlogsBySiteId(PageRequest request, Long siteId) {
+        return getPage(request, blogServiceCache.joinProductsBySiteId(siteId, JoinEnum.LEFT));
     }
 }
