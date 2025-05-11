@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: lemmas-service
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  datasource:
+    url: jdbc:postgresql://postgres:5432/web_scraping_lemmas_db
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/db.changelog-master.xml
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+app:
+  kafka:
+    saveBlogEntityTopic: save-blog-entity-topic
+    crawlerGroupId: crawler-groupId
+
+external-api:
+  authServiceUrl: "gateway:8080/api/v1/auth"
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://discovery:8761/eureka/
+
+aws:
+  access-key: ${AWS_ACCESS_KEY}
+  secret-key: ${AWS_SECRET_KEY}
+  bucket-name: scraping-crawler
+  baseUrl: "https://storage.yandexcloud.net/"
+

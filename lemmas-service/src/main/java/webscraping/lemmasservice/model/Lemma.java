@@ -1,0 +1,35 @@
+package webscraping.lemmasservice.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import org.hibernate.annotations.BatchSize;
+
+import java.util.ArrayList;
+import java.util.List;
+
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "lemmas")
+public class Lemma {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "site_id")
+    private Long siteId;
+
+    @Column(columnDefinition = "VARCHAR(255)", nullable = false)
+    private String lemma;
+
+    @Column(nullable = false)
+    private Integer frequency;
+
+    @OneToMany(mappedBy = "lemma", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @BatchSize(size = 500)
+    private List<Index> indexes = new ArrayList<>();
+}

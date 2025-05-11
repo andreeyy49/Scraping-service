@@ -7,6 +7,7 @@
     <file url="file://$PROJECT_DIR$/discovery/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/entity-vault-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/gateway/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/lemmas-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/parser-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/playwright-service/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/url-analyzer-service/src/main/java" charset="UTF-8" />

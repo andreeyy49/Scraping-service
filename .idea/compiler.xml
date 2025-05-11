@@ -10,7 +10,7 @@
         <module name="discovery" />
         <module name="gateway" />
       </profile>
-      <profile name="Annotation profile for entity-vault-service" enabled="true">
+      <profile name="Annotation profile for lemmas-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -20,6 +20,7 @@
         <module name="entity-vault-service" />
         <module name="crawler-service" />
         <module name="auth-service" />
+        <module name="lemmas-service" />
         <module name="parser-service" />
         <module name="url-analyzer-service" />
         <module name="playwright-service" />
@@ -38,6 +39,7 @@
       <module name="discovery" options="-parameters" />
       <module name="entity-vault-service" options="-parameters" />
       <module name="gateway" options="-parameters" />
+      <module name="lemmas-service" options="-parameters" />
       <module name="parser-service" options="-parameters" />
       <module name="playwright-service" options="-parameters" />
       <module name="url-analyzer-service" options="-parameters" />
