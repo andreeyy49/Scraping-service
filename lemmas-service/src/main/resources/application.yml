@@ -32,10 +32,3 @@ eureka:
   client:
     service-url:
       defaultZone: http://discovery:8761/eureka/
-
-aws:
-  access-key: ${AWS_ACCESS_KEY}
-  secret-key: ${AWS_SECRET_KEY}
-  bucket-name: scraping-crawler
-  baseUrl: "https://storage.yandexcloud.net/"
-

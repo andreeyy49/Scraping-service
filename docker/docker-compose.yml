@@ -191,6 +191,21 @@ services:
     networks:
       - vote-app-network
 
+  lemmas-service:
+    image: lemmas-service
+    container_name: lemmas-service
+    depends_on:
+      - discovery-app
+      - kafka
+      - postgres
+      - redis
+    environment:
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=password
+    networks:
+      - vote-app-network
+
   front:
     image: front
     container_name: front
