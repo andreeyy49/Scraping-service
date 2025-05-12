@@ -7,6 +7,12 @@ spring:
       ddl-auto: none
     show-sql: true
 
+  data:
+    redis:
+      host: redis
+      port: 6379
+      password: password
+
   datasource:
     url: jdbc:postgresql://postgres:5432/web_scraping_lemmas_db
     username: postgres
@@ -23,7 +29,7 @@ spring:
 app:
   kafka:
     saveBlogEntityTopic: save-blog-entity-topic
-    crawlerGroupId: crawler-groupId
+    crawlerGroupId: crawler-groupId1
 
 external-api:
   authServiceUrl: "gateway:8080/api/v1/auth"

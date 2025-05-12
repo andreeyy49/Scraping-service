@@ -36,6 +36,7 @@ public class EventListenerService {
 
         try {
             Blog blog = objectMapper.readValue(record.value(), Blog.class);
+            log.info("blog id: {}", blog.getId());
             blog.setHash(HashUtil.getMd5Hash(blog.getBlogText()));
             blogService.save(blog);
         } catch (JsonProcessingException e) {

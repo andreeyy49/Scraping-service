@@ -25,7 +25,7 @@ public class BlogServiceCache {
     private final BlogRepository blogRepository;
 
     @Transactional
-    @Cacheable(value = "findLatestBlogsByKeywords", key = "#keywords")
+//    @Cacheable(value = "findLatestBlogsByKeywords", key = "#keywords")
     public List<BlogDto> findLatestBlogsByKeywords(List<String> keywords) {
         if (keywords == null || keywords.isEmpty()) {
             return Collections.emptyList();
@@ -56,7 +56,7 @@ public class BlogServiceCache {
     }
 
     @Transactional
-    @Cacheable(value = "findLatestBlogsBySiteId", key = "#siteId")
+//    @Cacheable(value = "findLatestBlogsBySiteId", key = "#siteId")
     public List<BlogDto> findLatestBySiteId(Long siteId) {
         List<Blog> blogs = blogRepository.findAllBySiteId(siteId);
 
@@ -87,7 +87,7 @@ public class BlogServiceCache {
         return lastDates;
     }
 
-    @Cacheable(value = "findChangedBlogs", key = "#siteId")
+//    @Cacheable(value = "findChangedBlogs", key = "#siteId")
     public List<BlogTextChangeDto> findChangedBlogs(Long siteId) {
         List<Blog> allBlogs = blogRepository.findAllBySiteId(siteId);
         HashMap<String, Blog> uniqHashBlog = new HashMap<>();
@@ -111,7 +111,7 @@ public class BlogServiceCache {
                 .toList();
     }
 
-    @Cacheable(value = "joinProductsBySiteId", key = "#siteId + '-' + #joinEnum")
+//    @Cacheable(value = "joinProductsBySiteId", key = "#siteId + '-' + #joinEnum")
     public List<BlogDto> joinProductsBySiteId(Long siteId, JoinEnum joinEnum) {
         List<Date> dates = blogRepository.findLastTwoUniqueDatesBySiteId(siteId);
 
@@ -150,6 +150,12 @@ public class BlogServiceCache {
                     .map(this::blogToDto)
                     .collect(Collectors.toList());
         }
+    }
+
+    public List<BlogDto> findByIds(List<UUID> ids) {
+        List<Blog> blogs = blogRepository.findByIdIn(ids);
+        log.info("blogs size: {}", blogs.size());
+        return blogs.stream().map(this::blogToDto).toList();
     }
 
     private Date findLastDate(List<Blog> blogs) {

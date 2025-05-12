@@ -27,8 +27,7 @@ public class EventListenerService {
     public void listenBlogTopic(ConsumerRecord<String, String> record) {
         try {
             BlogDto blog = objectMapper.readValue(record.value(), BlogDto.class);
-
-            lemmaService.deleteAllBySiteId(blog.getSiteId());
+            log.info("blogs id: {}", blog.getId() );
 
             executorService.execute(()->{
                 List<Lemma> lemmas = LemmasParser.lemmaParse(blog);

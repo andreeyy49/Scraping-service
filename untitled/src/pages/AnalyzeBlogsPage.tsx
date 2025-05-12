@@ -20,7 +20,9 @@ import {
     Collapse,
     Chip,
     MenuItem,
-    Pagination
+    Pagination,
+    FormControlLabel,
+    Switch
 } from "@mui/material";
 import {
     Menu as MenuIcon,
@@ -75,6 +77,7 @@ export default function AnalyzeBlogsPage() {
     const [totalElements, setTotalElements] = useState(0);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [useLemmasSearch, setUseLemmasSearch] = useState(false); // Новое состояние для тумблера
 
     const navigate = useNavigate();
 
@@ -95,32 +98,68 @@ export default function AnalyzeBlogsPage() {
         fetchCategories();
     }, []);
 
-    const handleSearchByCategory = async (category: string, newPage = 1, newSize = size) => {
-        setSelectedCategory(category);
-        setKeywords(category); // Устанавливаем категорию как ключевое слово для отображения
-        setLoading(true);
+    const fetchBlogsByIds = async (blogIds: string[], newPage = 1, newSize = size) => {
         try {
-            let url;
-            const keywordsArray = [category.trim()];
-            if (selectedSite) {
-                // Поиск по категории и сайту
-                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
-            } else {
-                // Поиск только по категории
-                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
-            }
-
-            const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
-                headers: {
-                    Authorization: `Bearer ${localStorage.getItem("token")}`,
-                },
-            });
-
+            const response = await axios.post<PaginatedResponse<Blog>>(
+                `http://localhost:8080/api/v1/entity-vault/blog/findByIds?page=${newPage - 1}&size=${newSize}`,
+                blogIds,
+                {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                }
+            );
             setBlogs(response.data.content);
             setTotalPages(response.data.totalPages);
             setTotalElements(response.data.totalElements);
             setPage(newPage);
             setSize(newSize);
+        } catch (error) {
+            console.error("Ошибка при загрузке блогов:", error);
+            alert("Произошла ошибка при загрузке блогов");
+        }
+    };
+
+    const handleSearchByCategory = async (category: string, newPage = 1, newSize = size) => {
+        setSelectedCategory(category);
+        setKeywords(category);
+        setLoading(true);
+        try {
+            if (useLemmasSearch) {
+                // Поиск по леммам
+                let url = selectedSite
+                    ? `http://localhost:8080/api/v1/lemmas/search/${selectedSite}?query=${encodeURIComponent(category)}`
+                    : `http://localhost:8080/api/v1/lemmas/search?query=${encodeURIComponent(category)}`;
+
+                const response = await axios.get<string[]>(url, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+
+                await fetchBlogsByIds(response.data, newPage, newSize);
+            } else {
+                // Старый поиск по ключевым словам
+                let url;
+                const keywordsArray = [category.trim()];
+                if (selectedSite) {
+                    url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
+                } else {
+                    url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
+                }
+
+                const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                });
+
+                setBlogs(response.data.content);
+                setTotalPages(response.data.totalPages);
+                setTotalElements(response.data.totalElements);
+                setPage(newPage);
+                setSize(newSize);
+            }
         } catch (error) {
             console.error("Ошибка при поиске блогов по категории:", error);
             alert("Произошла ошибка при поиске блогов по категории");
@@ -132,35 +171,45 @@ export default function AnalyzeBlogsPage() {
     const handleSearch = async (newPage = 1, newSize = size) => {
         if (!keywords.trim()) return;
 
-        setSelectedCategory(null); // Сбрасываем выбранную категорию при ручном поиске
+        setSelectedCategory(null);
         setLoading(true);
         try {
-            let url;
-            const keywordsArray = keywords.split(",").map(k => k.trim());
+            if (useLemmasSearch) {
+                // Поиск по леммам
+                let url = selectedSite
+                    ? `http://localhost:8080/api/v1/lemmas/search/${selectedSite}?query=${encodeURIComponent(keywords)}`
+                    : `http://localhost:8080/api/v1/lemmas/search?query=${encodeURIComponent(keywords)}`;
 
-            if (selectedSite) {
-                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
-                const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
+                const response = await axios.get<string[]>(url, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
                 });
-                setBlogs(response.data.content);
-                setTotalPages(response.data.totalPages);
-                setTotalElements(response.data.totalElements);
+
+                await fetchBlogsByIds(response.data, newPage, newSize);
             } else {
-                url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
+                // Старый поиск по ключевым словам
+                let url;
+                const keywordsArray = keywords.split(",").map(k => k.trim());
+
+                if (selectedSite) {
+                    url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWordsAndSiteId/${selectedSite}?page=${newPage - 1}&size=${newSize}`;
+                } else {
+                    url = `http://localhost:8080/api/v1/entity-vault/blog/findByKeyWords?page=${newPage - 1}&size=${newSize}`;
+                }
+
                 const response = await axios.post<PaginatedResponse<Blog>>(url, keywordsArray, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`,
                     },
                 });
+
                 setBlogs(response.data.content);
                 setTotalPages(response.data.totalPages);
                 setTotalElements(response.data.totalElements);
+                setPage(newPage);
+                setSize(newSize);
             }
-            setPage(newPage);
-            setSize(newSize);
         } catch (error) {
             console.error("Ошибка при поиске блогов:", error);
             alert("Произошла ошибка при поиске блогов");
@@ -181,7 +230,6 @@ export default function AnalyzeBlogsPage() {
         setSelectedSite(event.target.value);
         setPage(1);
         if (selectedCategory) {
-            // Если выбрана категория, выполняем поиск по новой категории и сайту
             handleSearchByCategory(selectedCategory, 1);
         }
     };
@@ -253,11 +301,13 @@ export default function AnalyzeBlogsPage() {
                     <TextField
                         fullWidth
                         variant="outlined"
-                        label="Ключевые слова (через запятую)"
+                        label={useLemmasSearch ? "Поисковый запрос" : "Ключевые слова (через запятую)"}
                         value={keywords}
                         onChange={(e) => setKeywords(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                        placeholder="Например: технологии, искусственный интеллект, программирование"
+                        placeholder={useLemmasSearch
+                            ? "Введите поисковый запрос"
+                            : "Например: технологии, искусственный интеллект, программирование"}
                         sx={{ flex: 2, minWidth: 250 }}
                     />
 
@@ -276,6 +326,19 @@ export default function AnalyzeBlogsPage() {
                             </MenuItem>
                         ))}
                     </TextField>
+
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={useLemmasSearch}
+                                onChange={(e) => setUseLemmasSearch(e.target.checked)}
+                                color="primary"
+                            />
+                        }
+                        label="Поиск по леммам"
+                        labelPlacement="top"
+                        sx={{ mx: 1 }}
+                    />
 
                     <Button
                         variant="contained"
@@ -297,6 +360,7 @@ export default function AnalyzeBlogsPage() {
                     </Button>
                 </Box>
 
+                {/* Остальной код остается без изменений */}
                 {loading && (
                     <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
                         <CircularProgress />

@@ -9,6 +9,7 @@ import webscraping.entityvaultservice.service.BlogService;
 import webscraping.entityvaultservice.service.ProductService;
 
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -22,6 +23,13 @@ public class EntityVaultController {
     @GetMapping("/blog/allCategory")
     public List<String> findAllCategory() {
         return blogService.findAllCategory();
+    }
+
+    @PostMapping("/blog/findByIds")
+    public PageDto<BlogDto> findByIds(@RequestBody List<UUID> blogIds,
+                                      @RequestParam(name = "page", defaultValue = "0") int page,
+                                      @RequestParam(name = "size", defaultValue = "10") int size) {
+        return blogService.findByIds(PageRequest.of(page, size), blogIds);
     }
 
     @GetMapping("/blog/images/{site_id}")

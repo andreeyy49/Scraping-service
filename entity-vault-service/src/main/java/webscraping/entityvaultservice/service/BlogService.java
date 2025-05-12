@@ -85,4 +85,8 @@ public class BlogService {
     public PageDto<BlogDto> leftJoinBlogsBySiteId(PageRequest request, Long siteId) {
         return getPage(request, blogServiceCache.joinProductsBySiteId(siteId, JoinEnum.LEFT));
     }
+
+    public PageDto<BlogDto> findByIds(PageRequest request, List<UUID> blogIds) {
+        return getPage(request, blogServiceCache.findByIds(blogIds));
+    }
 }

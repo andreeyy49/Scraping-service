@@ -7,80 +7,63 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import webscraping.lemmasservice.model.Index;
 import webscraping.lemmasservice.model.Lemma;
+import webscraping.lemmasservice.repository.IndexRepository;
 import webscraping.lemmasservice.repository.LemmaRepository;
-import webscraping.lemmasservice.util.BeanUtils;
 import webscraping.lemmasservice.util.LemmasParser;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class LemmaService {
 
-    private final RedisLemmaService redisLemmaService;
     private final LemmaRepository lemmaRepository;
+    private final IndexRepository indexRepository;
 
     @Transactional
     public void saveAll(List<Lemma> lemmaList) {
-        List<String> lemmaKeys = Collections.unmodifiableList(
-                lemmaList.stream().map(Lemma::getLemma).collect(Collectors.toList())
-        );
-
-        Map<String, Lemma> cachedLemmas = redisLemmaService.getLemmaFromCache(lemmaKeys);
-
-        Set<String> keysToFetchFromDB = Collections.synchronizedSet(new HashSet<>(lemmaKeys));
-        keysToFetchFromDB.removeAll(cachedLemmas.keySet());
-
-        final Map<String, Lemma> dbLemmas = new ConcurrentHashMap<>();
-
-        if (!keysToFetchFromDB.isEmpty()) {
-            synchronized (dbLemmas) {
-                List<String> missingKeys = new ArrayList<>(keysToFetchFromDB);
-                missingKeys.forEach(lemmaKey -> {
-                    Lemma lemma = lemmaRepository.findByLemma(lemmaKey);
-                    dbLemmas.put(lemmaKey, lemma);
-                });
-            }
+        if (lemmaList == null || lemmaList.isEmpty()) {
+            return;
         }
 
-        lemmaList.forEach(lemma -> {
-            Lemma existLemma = cachedLemmas.get(lemma.getLemma());
-            if (existLemma == null) {
-                existLemma = dbLemmas.get(lemma.getLemma());
-            }
+        // Группируем и сортируем леммы по ключу для детерминированного порядка
+        Map<String, List<Lemma>> groupedLemmas = lemmaList.stream()
+                .filter(lemma -> lemma != null && lemma.getLemma() != null && lemma.getSiteId() != null)
+                .collect(Collectors.groupingBy(
+                        lemma -> lemma.getSiteId() + "::" + lemma.getLemma(),
+                        TreeMap::new, // Используем TreeMap для автоматической сортировки
+                        Collectors.toList()
+                ));
 
-            if (existLemma != null) {
-                lemma.setId(existLemma.getId());
-                lemma.setFrequency(existLemma.getFrequency() + 1);
+        // Сначала обновляем частотность в отсортированном порядке
+        groupedLemmas.keySet().stream().sorted().forEach(key -> {
+            String[] parts = key.split("::", 2);
+            Long siteId = Long.parseLong(parts[0]);
+            String lemmaValue = parts[1];
+            lemmaRepository.upsertLemma(siteId, lemmaValue);
+        });
 
-                List<Index> indexes = new ArrayList<>(existLemma.getIndexes());
-                indexes.addAll(lemma.getIndexes());
-                lemma.setIndexes(indexes);
+        // Затем обрабатываем индексы в том же порядке
+        groupedLemmas.keySet().stream().sorted().forEach(key -> {
+            String[] parts = key.split("::", 2);
+            Long siteId = Long.parseLong(parts[0]);
+            String lemmaValue = parts[1];
 
-                update(lemma);
-            } else {
-                save(lemma);
+            Lemma lemma = lemmaRepository.findByLemmaAndSiteId(lemmaValue, siteId)
+                    .orElseThrow(() -> new RuntimeException("Lemma should exist after upsert"));
 
-                redisLemmaService.saveLemmaToCache(lemma.getLemma(), lemma);
+            List<Index> allIndexes = groupedLemmas.get(key).stream()
+                    .flatMap(l -> l.getIndexes() != null ? l.getIndexes().stream() : Stream.empty())
+                    .peek(index -> index.setLemma(lemma))
+                    .collect(Collectors.toList());
+
+            if (!allIndexes.isEmpty()) {
+                indexRepository.saveAll(allIndexes);
             }
         });
-    }
-
-    public Lemma save(Lemma lemma) {
-        return lemmaRepository.save(lemma);
-    }
-
-    public Lemma update(Lemma lemma) {
-        Lemma oldLemma = findById(lemma.getId());
-        BeanUtils.copyNotNullProperties(lemma, oldLemma);
-        return lemmaRepository.save(oldLemma);
-    }
-
-    public Lemma findById(Long id) {
-        return lemmaRepository.findById(id).orElse(null);
     }
 
     @SneakyThrows
@@ -90,76 +73,67 @@ public class LemmaService {
 
     @SneakyThrows
     public List<UUID> findBlogIdsByRelevance(String query, int topN, Long siteId) {
-        // Получаем хеш-карту лемм из запроса
-        Map<String, Integer> queryLemmas = LemmasParser.getLemmasHashMap(query);
-
-        // Сохраняем мапу для подсчета релевантности по pageId (UUID)
-        Map<UUID, Float> pageRelevanceMap = new HashMap<>();
-
-        // Получаем все леммы из репозитория для всех лемм из запроса, фильтруем по siteId
-        List<Lemma> lemmaList;
-        if (siteId == -1L) {
-            lemmaList = lemmaRepository.findByLemmaIn(new ArrayList<>(queryLemmas.keySet()));
-        } else {
-            lemmaList = lemmaRepository.findByLemmaInAndSiteId(new ArrayList<>(queryLemmas.keySet()), siteId);
+        // Проверка входных параметров
+        if (query == null || query.trim().isEmpty() || topN <= 0) {
+            return Collections.emptyList();
         }
 
-        // Создаем мапу для быстрого поиска лемм по ключу
-        Map<String, Lemma> lemmaMap = lemmaList.stream()
-                .collect(Collectors.toMap(Lemma::getLemma, lemma -> lemma));
+        // Получаем леммы из запроса
+        Map<String, Integer> queryLemmas = LemmasParser.getLemmasHashMap(query);
+        if (queryLemmas.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        // Проходим по всем леммам из запроса
-        for (String lemmaKey : queryLemmas.keySet()) {
-            Lemma lemma = lemmaMap.get(lemmaKey);
+        // Загружаем все нужные леммы и их индексы
+        List<Lemma> lemmaList;
+        if (siteId == -1L) {
+            lemmaList = lemmaRepository.findByLemmaInWithIndexes(new ArrayList<>(queryLemmas.keySet()));
+        } else {
+            lemmaList = lemmaRepository.findByLemmaInAndSiteIdWithIndexes(
+                    new ArrayList<>(queryLemmas.keySet()), siteId);
+        }
 
-            if (lemma != null) {
-                // Для каждой леммы перебираем индексы
-                for (Index index : lemma.getIndexes()) {
-                    // Считаем релевантность для каждого индекса
-                    float relevance = calculateRelevance(index, queryLemmas);
+        // Логирование для отладки
+        log.debug("Found {} lemmas for query: {}", lemmaList.size(), query);
 
-                    // Накапливаем релевантность для каждого pageId (UUID)
-                    pageRelevanceMap.merge(index.getPageId(), relevance, Float::sum);
-                }
+        // Подсчет релевантности
+        Map<UUID, Float> pageRelevanceMap = new HashMap<>();
+
+        for (Lemma lemma : lemmaList) {
+            if (lemma.getIndexes() == null || lemma.getIndexes().isEmpty()) {
+                continue;
+            }
+
+            for (Index index : lemma.getIndexes()) {
+                float relevance = calculateRelevance(index, queryLemmas, lemma);
+                pageRelevanceMap.merge(index.getPageId(), relevance, Float::sum);
             }
         }
 
-        // Сортируем страницы по релевантности и выбираем топ N ID с наивысшей релевантностью
+        // Сортировка и возврат результатов
         return pageRelevanceMap.entrySet().stream()
-                .sorted(Map.Entry.<UUID, Float>comparingByValue().reversed()) // Сортируем по убыванию релевантности
-                .limit(topN) // Ограничиваем количеством топовых результатов
-                .map(Map.Entry::getKey) // Извлекаем pageId (UUID)
-                .collect(Collectors.toList()); // Собираем в список
+                .sorted(Map.Entry.<UUID, Float>comparingByValue().reversed())
+                .limit(topN)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
 
-    private float calculateRelevance(Index index, Map<String, Integer> queryLemmas) {
-        float relevance = 0;
+    private float calculateRelevance(Index index, Map<String, Integer> queryLemmas, Lemma lemma) {
+        float relevance = 0f;
 
-        // Проходим по всем леммам из запроса
-        for (String lemmaKey : queryLemmas.keySet()) {
-            // Находим лемму в базе данных по ключу
-            Lemma lemma = lemmaRepository.findByLemma(lemmaKey);
+        // Вес частоты леммы в запросе
+        int queryFrequency = queryLemmas.getOrDefault(lemma.getLemma(), 1);
+        relevance += queryFrequency * 0.7f;
 
-            if (lemma != null) {
-                // Учитываем частоту леммы в запросе
-                int queryLemmaFrequency = queryLemmas.get(lemmaKey);
-                int pageLemmaFrequency = lemma.getFrequency(); // Частота леммы на странице
-                relevance += pageLemmaFrequency * queryLemmaFrequency * 0.5f; // Умножаем на частоту из запроса
+        // Вес частоты леммы в индексе
+        relevance += lemma.getFrequency() * 0.5f;
 
-                // Учитываем рейтинг леммы на странице
-                Integer indexRank = index.getRank(); // Рейтинг индекса леммы на странице
-                if (indexRank != null) {
-                    relevance += indexRank * 0.3f; // Умножаем на рейтинг индекса
-                }
-            }
+        // Вес ранга индекса
+        if (index.getRank() != null) {
+            relevance += index.getRank() * 0.3f;
         }
 
         return relevance;
     }
-
-    public void deleteAllBySiteId(Long siteId) {
-        lemmaRepository.deleteAllBySiteId(siteId);
-    }
-
 }

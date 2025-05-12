@@ -19,6 +19,7 @@ public class GatewayConfig {
                 .route("crawler-service", r -> r.path("/api/v1/crawler/**").uri("lb://crawler-service"))
                 .route("playwright-service", r -> r.path("/api/v1/playwright/**").uri("lb://playwright-service"))
                 .route("entity-vault-service", r -> r.path("/api/v1/entity-vault/**").uri("lb://entity-vault-service"))
+                .route("lemmas-service", r -> r.path("/api/v1/lemmas/**").uri("lb://lemmas-service"))
                 .build();
     }
 

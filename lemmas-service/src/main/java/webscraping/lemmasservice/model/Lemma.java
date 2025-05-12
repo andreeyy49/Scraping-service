@@ -1,9 +1,8 @@
 package webscraping.lemmasservice.model;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
@@ -14,6 +13,8 @@ import java.util.List;
 @NoArgsConstructor
 @Entity
 @Table(name = "lemmas")
+@ToString(exclude = "indexes") // Исключаем indexes из toString()
+@EqualsAndHashCode(exclude = "indexes") // Исключаем indexes из equals() и hashCode()
 public class Lemma {
 
     @Id
@@ -29,7 +30,8 @@ public class Lemma {
     @Column(nullable = false)
     private Integer frequency;
 
-    @OneToMany(mappedBy = "lemma", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "lemma", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @BatchSize(size = 500)
+    @JsonManagedReference
     private List<Index> indexes = new ArrayList<>();
 }

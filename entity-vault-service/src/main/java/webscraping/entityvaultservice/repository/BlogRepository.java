@@ -3,6 +3,8 @@ package webscraping.entityvaultservice.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import webscraping.entityvaultservice.dto.BlogDto;
+import webscraping.entityvaultservice.dto.PageDto;
 import webscraping.entityvaultservice.model.Blog;
 import webscraping.entityvaultservice.model.Product;
 
@@ -37,4 +39,6 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     List<Date> findLastTwoUniqueDatesBySiteId(@Param("siteId") Long siteId);
 
     List<Blog> findAllByParseTime(Date date);
+
+    List<Blog> findByIdIn(List<UUID> blogIds);
 }

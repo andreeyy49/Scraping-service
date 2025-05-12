@@ -1,0 +1,1 @@
+ALTER TABLE lemmas ADD CONSTRAINT lemma_site_unique UNIQUE (site_id, lemma);
