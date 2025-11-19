@@ -145,10 +145,6 @@ services:
     container_name: crawler-service
     env_file:
       - .env
-    deploy:
-      resources:
-        limits:
-          memory: 5g
     depends_on:
       - discovery-app
       - kafka

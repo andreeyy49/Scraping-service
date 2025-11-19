@@ -40,10 +40,9 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
             .build();
 
     private static final Map<String, Semaphore> hostSemaphores = new ConcurrentHashMap<>();
-    private static final Semaphore globalSemaphore = new Semaphore(30); // Увеличено до 30
+    private static final Semaphore globalSemaphore = new Semaphore(30);
     private static final int MAX_HOST_CONCURRENT_REQUESTS = 15; // Лимит на хост
 
-    // Глобальный набор для отслеживания обработанных URL
     private static Set<String> addedUrls;
 
     private static final Pattern HTTPS_PATTERN = Pattern.compile("https?://[^/]+");
@@ -65,7 +64,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
             initAddress.setPath(normalizePath(initAddress.getAbsolutePath()));
         }
 
-        // Регистрируем корневой URL, чтобы он не обрабатывался повторно
         addedUrls = ConcurrentHashMap.newKeySet();
         addedUrls.add(initAddress.getAbsolutePath());
         initAddress.setHeadUrl(headAddress);
@@ -90,7 +88,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
     protected List<PageUrl> compute() {
         List<PageUrl> urls = new ArrayList<>();
 
-        // Обрабатываем страницу, если удалось подключиться и получить контент
         if (!connection()) {
             return urls;
         }
@@ -98,7 +95,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
         urls.add(address);
 
         List<PagesUrlSummer> taskList = new ArrayList<>();
-        // Создаем задачи для всех дочерних URL, которые уже добавлены в children (это новые уникальные ссылки, добавленные в connection()).
         for (PageUrl child : address.getChildren()) {
             if (child != null) {
                 PagesUrlSummer task = new PagesUrlSummer(child, playwrightClient, headAddress, parentSite, parserType);
@@ -129,7 +125,7 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
                 try {
                     log.info("Подключение HttpClient: {}", address.getAbsolutePath());
                     doc = fetchWithSemaphore(address.getAbsolutePath()).join();
-                    break; // Успех - выходим из цикла
+                    break;
                 } catch (Exception e) {
                     retries--;
                     if (retries == 0) {
@@ -147,20 +143,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
                     }
                 }
             }
-//        }
-//        if (parserType.equals(ParserType.JSOUP)) {
-//            try {
-//                Thread.sleep(150); // Пауза между запросами
-//                doc = Jsoup.connect(address.getAbsolutePath())
-//                        .userAgent("HeliontSearchBot/1.0")
-//                        .referrer("http://www.google.com")
-//                        .timeout(10_000)
-//                        .get();
-//                log.info("Подключение jsoup: {}", address.getAbsolutePath());
-//            } catch (IOException | InterruptedException e) {
-//                log.error("Ошибка при подключении jsoup: {} address: {}", e.getMessage(), address.getAbsolutePath());
-//                return false;
-//            }
         } else if (parserType.equals(ParserType.PLAYWRIGHT)) {
             try {
                 log.info("Подключение playwright: {}", address.getAbsolutePath());
@@ -169,14 +151,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
                 log.error("Ошибка при подключении playwright: {} address: {}", e.getMessage(), address.getAbsolutePath());
                 return false;
             }
-//        } else if (parserType.equals(ParserType.JSOUP)) {
-//            try {
-//                log.info("Подключение HttpClient: {}", address.getAbsolutePath());
-//                doc = fetchContentWithHttpClient(address.getAbsolutePath());
-//            } catch (Exception e) {
-//                log.error("Ошибка при подключении HttpClient: {} address: {}", e.getMessage(), address.getAbsolutePath());
-//                return false;
-//            }
         } else {
             return false;
         }
@@ -184,7 +158,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
         address.setContent(doc.toString());
         Elements elements = doc.select("a[href]");
 
-        // Обрабатываем найденные ссылки на странице
         for (Element el : elements) {
             String href = el.attr("abs:href");
             if (href.isEmpty()) {
@@ -192,7 +165,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
             }
             href = normalizeUrl(href);
 
-            // Если ссылка пустая, отфильтрована или уже добавлена – пропускаем её
             if (href.isEmpty() || urlFilter(href) || !addedUrls.add(href)) {
                 continue;
             }
@@ -222,7 +194,7 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
         if (url == null || url.isEmpty()) {
             return "";
         }
-        // Удаляем якоря и параметры запроса
+
         url = QUERY_ANCHOR_PATTERN.matcher(url).replaceAll("");
         url = url.toLowerCase();
         while (url.endsWith("/")) {
@@ -250,7 +222,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
                 h -> new Semaphore(MAX_HOST_CONCURRENT_REQUESTS));
         try {
 
-            // Пробуем получить разрешения с небольшим таймаутом
             if (!globalSemaphore.tryAcquire(1, 50, TimeUnit.MILLISECONDS)) {
                 log.debug("Global semaphore timeout for {}", url);
                 return CompletableFuture.failedFuture(new IOException("Global request limit exceeded"));
@@ -272,13 +243,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
             return CompletableFuture.failedFuture(e);
         }
 
-//        // Настраиваем HTTP клиент с retry политикой
-//        HttpClient client = HttpClient.newBuilder()
-//                .version(HttpClient.Version.HTTP_1_1)
-//                .connectTimeout(Duration.ofSeconds(15))
-//                .followRedirects(HttpClient.Redirect.NORMAL)
-//                .build();
-
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("User-Agent", "Mozilla/5.0 (compatible; MyBot/1.0; +http://mysite.com/bot.html)")
@@ -299,7 +263,6 @@ public class PagesUrlSummer extends RecursiveTask<List<PageUrl>> {
                     return Jsoup.parse(response.body(), url);
                 })
                 .whenComplete((res, ex) -> {
-                    // Всегда освобождаем семафоры
                     hostSemaphore.release();
                     globalSemaphore.release();
 

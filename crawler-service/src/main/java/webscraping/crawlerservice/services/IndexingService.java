@@ -133,12 +133,14 @@ public class IndexingService {
 
             isStartIndexing = false;
 
-            log.info("Indexing finished {}ms", System.currentTimeMillis() - start);
+            Long res = System.currentTimeMillis() - start;
 
             if (!pageListToDb.isEmpty()) {
                 s3Service.uploadPagesJson(pageListToDb, siteDataType);
 //                eventService.sendPagesToTopic(pageListToDb, siteDataType);
             }
+
+            log.info("Indexing finished {}ms\npages size {}", res, pageListToDb.size());
         });
 
         thread.start();
